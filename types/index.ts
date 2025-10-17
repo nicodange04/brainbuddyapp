@@ -1,17 +1,62 @@
 // Tipos principales de la aplicación
 
+// Tipos basados en tu estructura actual de Supabase
 export interface Usuario {
-  id: string;
+  usuario_id: string;
   nombre: string;
-  email: string;
+  apellido: string;
+  correo: string;
+  password_hash: string;
   rol: 'alumno' | 'padre' | 'admin';
-  fecha_nacimiento?: string;
-  codigo_vinculacion: string;
-  avatar_color: string;
-  puntos_totales: number;
-  racha_dias: number;
+  deleted_at?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface Alumno {
+  alumno_id: string;
+  ranking_id?: number;
+  deleted_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Padre {
+  padre_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Admin {
+  admin_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Suscripcion {
+  suscripcion_id: string;
+  usuario_id: string;
+  plan: string;
+  estado: string;
+  fecha_inicio: string;
+  fecha_fin?: string;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Tipos extendidos para funcionalidades futuras
+export interface UsuarioCompleto extends Usuario {
+  alumno?: Alumno;
+  padre?: Padre;
+  admin?: Admin;
+  suscripcion?: Suscripcion;
+  // Campos adicionales para la app
+  codigo_vinculacion?: string;
+  avatar_color?: string;
+  puntos_totales?: number;
+  racha_dias?: number;
 }
 
 export interface Examen {
