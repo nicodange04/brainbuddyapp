@@ -1,98 +1,193 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import React from 'react';
+import { ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const insets = useSafeAreaInsets();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
+  return (
+    <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header con avatar y puntos */}
+      <ThemedView style={styles.header}>
+        <ThemedView style={styles.avatarContainer}>
+          <Avatar 
+            iniciales="JP"
+            color="#8B5CF6"
+            size="medium"
+          />
+        </ThemedView>
+        <ThemedView style={styles.userInfo}>
+          <ThemedText type="title">¡Hola, Juan!</ThemedText>
+          <ThemedText type="defaultSemiBold">320 pts ⭐ 🔥 14</ThemedText>
+        </ThemedView>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
+
+      {/* Próxima sesión */}
+      <ThemedView style={styles.section}>
+        <ThemedText type="subtitle">TU PRÓXIMA SESIÓN</ThemedText>
+        <ThemedView style={styles.sesionCard}>
+          <ThemedText type="defaultSemiBold">Sesión 3: Revolución Francesa</ThemedText>
+          <ThemedText>📚 Historia</ThemedText>
+          <ThemedText>📅 Hoy</ThemedText>
+          <ThemedView style={styles.progressBar}>
+            <ThemedView style={styles.progressFill} />
+          </ThemedView>
+          <ThemedText>████████░░ 2/5</ThemedText>
+          <TouchableOpacity style={styles.button}>
+            <ThemedText style={styles.buttonText}>Comenzar sesión</ThemedText>
+          </TouchableOpacity>
+        </ThemedView>
       </ThemedView>
-    </ParallaxScrollView>
+
+      {/* Próximos exámenes */}
+      <ThemedView style={styles.section}>
+        <ThemedText type="subtitle">PRÓXIMOS EXÁMENES</ThemedText>
+        <ThemedView style={styles.examenesContainer}>
+          <ThemedView style={styles.examenCard}>
+            <ThemedText type="defaultSemiBold">Matemáticas</ThemedText>
+            <ThemedText>15 Oct</ThemedText>
+          </ThemedView>
+          <ThemedView style={styles.examenCard}>
+            <ThemedText type="defaultSemiBold">Historia</ThemedText>
+            <ThemedText>20 Oct</ThemedText>
+          </ThemedView>
+        </ThemedView>
+      </ThemedView>
+
+      {/* Accesos rápidos */}
+      <ThemedView style={styles.section}>
+        <TouchableOpacity style={styles.quickAction}>
+          <ThemedText>📅 Ver calendario</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickAction}>
+          <ThemedText>➕ Agregar examen</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.quickAction}>
+          <ThemedText>📊 Mi progreso</ThemedText>
+        </TouchableOpacity>
+      </ThemedView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC', // Fondo más suave y consistente
+    padding: 20,
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    marginBottom: 24,
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  avatarContainer: {
+    marginRight: 15,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  userInfo: {
+    flex: 1,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sesionCard: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 16,
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
+    marginVertical: 12,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    width: '80%',
+    backgroundColor: '#10B981',
+    borderRadius: 4,
+  },
+  button: {
+    backgroundColor: '#3B82F6',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    alignItems: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  examenesContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  examenCard: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    flex: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  quickAction: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
 });
