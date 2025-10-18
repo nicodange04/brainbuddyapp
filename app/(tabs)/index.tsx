@@ -1,5 +1,4 @@
 import { Avatar } from '@/components/avatar';
-import { SupabaseTest } from '@/components/supabase-test';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import React from 'react';
@@ -25,9 +24,6 @@ export default function HomeScreen() {
           <ThemedText type="defaultSemiBold">320 pts ⭐ 🔥 14</ThemedText>
         </ThemedView>
       </ThemedView>
-
-      {/* Test de conexión Supabase */}
-      <SupabaseTest />
 
       {/* Próxima sesión */}
       <ThemedView style={styles.section}>

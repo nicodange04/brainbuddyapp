@@ -1,7 +1,9 @@
 import { Avatar } from '@/components/avatar';
 import { CodigoVinculacion } from '@/components/codigo-vinculacion';
+import { DateInput } from '@/components/date-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useAuth } from '@/contexts/AuthContext';
 import { generarAvatar, generarCodigoVinculacion } from '@/services/avatar';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -11,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { register } = useAuth();
   const [step, setStep] = useState(1);
   const [userType, setUserType] = useState<'alumno' | 'padre' | null>(null);
   const [formData, setFormData] = useState({
@@ -24,6 +27,7 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [avatarGenerado, setAvatarGenerado] = useState<{iniciales: string, color: string} | null>(null);
   const [codigoGenerado, setCodigoGenerado] = useState<string>('');
+
 
   const handleNext = () => {
     if (step === 1 && !userType) {
@@ -60,20 +64,36 @@ export default function RegisterScreen() {
   const handleRegister = async () => {
     setIsLoading(true);
     
-    // Solo generar avatar y código para alumnos
-    if (userType === 'alumno') {
-      const avatar = generarAvatar(formData.nombre);
-      const codigo = generarCodigoVinculacion();
+    try {
+      // Preparar datos para el registro
+      const registerData = {
+        nombre: formData.nombre.split(' ')[0] || formData.nombre,
+        apellido: formData.nombre.split(' ').slice(1).join(' ') || '',
+        email: formData.email,
+        password: formData.password,
+        rol: userType!,
+        fechaNacimiento: userType === 'alumno' ? formData.fechaNacimiento : undefined,
+        telefono: userType === 'padre' ? formData.telefono : undefined,
+      };
+
+      // Registrar usuario
+      await register(registerData);
       
-      setAvatarGenerado(avatar);
-      setCodigoGenerado(codigo);
-    }
-    
-    // Simulación de registro (por ahora)
-    setTimeout(() => {
-      setIsLoading(false);
+      // Solo generar avatar y código para alumnos (para mostrar en pantalla de éxito)
+      if (userType === 'alumno') {
+        const avatar = generarAvatar(formData.nombre);
+        const codigo = generarCodigoVinculacion();
+        
+        setAvatarGenerado(avatar);
+        setCodigoGenerado(codigo);
+      }
+      
       setStep(5); // Ir al paso de éxito
-    }, 2000);
+    } catch (error) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Error al crear la cuenta');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderStep1 = () => (
@@ -216,12 +236,10 @@ export default function RegisterScreen() {
       {userType === 'alumno' && (
         <ThemedView style={styles.inputContainer}>
           <ThemedText style={styles.label}>Fecha de nacimiento</ThemedText>
-          <TextInput
-            style={styles.input}
-            placeholder="DD/MM/AAAA"
-            placeholderTextColor="#9CA3AF"
+          <DateInput
             value={formData.fechaNacimiento}
             onChangeText={(text) => setFormData({...formData, fechaNacimiento: text})}
+            placeholder="DD/MM/YYYY"
           />
         </ThemedView>
       )}

@@ -1,11 +1,37 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { Alert, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PerfilScreen() {
   const insets = useSafeAreaInsets();
+  const { user, logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      '¿Estás seguro de que quieres cerrar sesión?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cerrar Sesión',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/login');
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo cerrar la sesión');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
@@ -48,7 +74,11 @@ export default function PerfilScreen() {
         <ThemedText>• Botón "Editar perfil"</ThemedText>
         <ThemedText>• Botón "Cambiar contraseña"</ThemedText>
         <ThemedText>• Botón "Notificaciones"</ThemedText>
-        <ThemedText>• Botón "Cerrar sesión"</ThemedText>
+        
+        {/* Botón de Logout */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <ThemedText style={styles.logoutButtonText}>🚪 Cerrar Sesión</ThemedText>
+        </TouchableOpacity>
         
         <ThemedText type="subtitle">🎨 DISEÑO:</ThemedText>
         <ThemedText>• Avatar centrado en la parte superior</ThemedText>
@@ -99,5 +129,25 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderWidth: 1,
     borderColor: '#F1F5F9',
+  },
+  logoutButton: {
+    backgroundColor: '#EF4444',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 20,
+    alignItems: 'center',
+    shadowColor: '#EF4444',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  logoutButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

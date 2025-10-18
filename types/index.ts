@@ -46,17 +46,26 @@ export interface Suscripcion {
   updated_at: string;
 }
 
-// Tipos extendidos para funcionalidades futuras
-export interface UsuarioCompleto extends Usuario {
+// Tipos para autenticación
+export interface AuthUser {
+  usuario: Usuario;
   alumno?: Alumno;
   padre?: Padre;
-  admin?: Admin;
-  suscripcion?: Suscripcion;
-  // Campos adicionales para la app
-  codigo_vinculacion?: string;
-  avatar_color?: string;
-  puntos_totales?: number;
-  racha_dias?: number;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData {
+  nombre: string;
+  apellido: string;
+  email: string;
+  password: string;
+  rol: 'alumno' | 'padre';
+  fechaNacimiento?: string;
+  telefono?: string;
 }
 
 export interface Examen {

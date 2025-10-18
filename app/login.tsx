@@ -1,5 +1,6 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useAuth } from '@/contexts/AuthContext';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
@@ -8,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,12 +23,15 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     
-    // Simulación de login (por ahora)
-    setTimeout(() => {
-      setIsLoading(false);
-      // Por ahora redirigimos a las tabs principales
+    try {
+      await login({ email, password });
+      // El AuthContext maneja la navegación automáticamente
       router.replace('/(tabs)');
-    }, 1500);
+    } catch (error) {
+      Alert.alert('Error', error instanceof Error ? error.message : 'Error al iniciar sesión');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
