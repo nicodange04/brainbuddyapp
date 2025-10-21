@@ -1,11 +1,13 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CalendarioScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
@@ -42,6 +44,28 @@ export default function CalendarioScreen() {
         <ThemedText>• Dots pequeños pero visibles</ThemedText>
         <ThemedText>• Modal con fondo semi-transparente</ThemedText>
         <ThemedText>• Cards para mostrar sesiones en el modal</ThemedText>
+      </ThemedView>
+
+      <ThemedView style={styles.actionsContainer}>
+        <ThemedText type="subtitle">🔧 ACCIONES DISPONIBLES:</ThemedText>
+        
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => router.push('/disponibilidad')}
+        >
+          <Text style={styles.actionButtonText}>
+            ⏰ Configurar Disponibilidad Horaria
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => router.push('/crear-examen')}
+        >
+          <Text style={styles.actionButtonText}>
+            📝 Agregar Examen
+          </Text>
+        </TouchableOpacity>
       </ThemedView>
     </ScrollView>
   );
@@ -85,5 +109,34 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderWidth: 1,
     borderColor: '#F1F5F9',
+  },
+  actionsContainer: {
+    marginTop: 20,
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  actionButton: {
+    backgroundColor: '#8B5CF6',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginVertical: 8,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
