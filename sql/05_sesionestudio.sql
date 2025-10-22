@@ -48,3 +48,4 @@ COMMENT ON COLUMN public.sesionestudio.quiz_generado IS 'Quiz generado por IA en
 COMMENT ON COLUMN public.sesionestudio.secuencia IS 'Orden de la sesión dentro del examen (1, 2, 3...)';
 COMMENT ON COLUMN public.sesionestudio.tiempo_estudio IS 'Tiempo real de estudio en minutos';
 
+

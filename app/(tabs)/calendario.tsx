@@ -1,13 +1,50 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useAuth } from '@/contexts/AuthContext';
+import { distribuirSesionesParaTodosExamenes } from '@/services/sessionDistribution';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CalendarioScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user } = useAuth();
+  const [isDistribuyendo, setIsDistribuyendo] = useState(false);
+
+  const handleDistribuirSesiones = async () => {
+    if (!user?.usuario?.usuario_id) {
+      Alert.alert('Error', 'No hay usuario autenticado');
+      return;
+    }
+
+    setIsDistribuyendo(true);
+    try {
+      const resultados = await distribuirSesionesParaTodosExamenes(user.usuario.usuario_id);
+      
+      const totalSesiones = resultados.reduce((sum, r) => sum + r.sesiones_creadas, 0);
+      const examenesConError = resultados.filter(r => r.error);
+      
+      if (examenesConError.length > 0) {
+        const errores = examenesConError.map(r => r.error).join('\n');
+        Alert.alert(
+          'Distribución completada con errores',
+          `Se crearon ${totalSesiones} sesiones.\n\nErrores:\n${errores}`
+        );
+      } else {
+        Alert.alert(
+          '¡Distribución exitosa!',
+          `Se crearon ${totalSesiones} sesiones de estudio para todos los exámenes.`
+        );
+      }
+    } catch (error) {
+      console.error('Error al distribuir sesiones:', error);
+      Alert.alert('Error', 'No se pudieron distribuir las sesiones');
+    } finally {
+      setIsDistribuyendo(false);
+    }
+  };
 
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]}>
@@ -64,6 +101,16 @@ export default function CalendarioScreen() {
         >
           <Text style={styles.actionButtonText}>
             📝 Agregar Examen
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.algorithmButton]}
+          onPress={handleDistribuirSesiones}
+          disabled={isDistribuyendo}
+        >
+          <Text style={styles.actionButtonText}>
+            {isDistribuyendo ? '🔄 Distribuyendo...' : '🧠 Generar Sesiones de Estudio'}
           </Text>
         </TouchableOpacity>
       </ThemedView>
@@ -138,5 +185,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  algorithmButton: {
+    backgroundColor: '#10B981', // Verde para el algoritmo
   },
 });
