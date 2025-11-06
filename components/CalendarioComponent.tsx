@@ -9,7 +9,7 @@ import {
 } from '@/services/calendar';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 
 interface CalendarioProps {
@@ -23,6 +23,7 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey }: C
   const [diasCalendario, setDiasCalendario] = useState<DiaCalendario[]>([]);
   const [actividadesProximas2Semanas, setActividadesProximas2Semanas] = useState<DiaCalendario[]>([]);
   const [loading, setLoading] = useState(false);
+  const [examenesExpandidos, setExamenesExpandidos] = useState<Set<string>>(new Set());
 
   // Obtener fechas del mes actual
   const hoy = new Date();
@@ -159,25 +160,61 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey }: C
     );
   };
 
-  const renderExamen = (examen: ExamenCalendario, fecha?: string) => {
+  const toggleExamen = (examenId: string) => {
+    setExamenesExpandidos(prev => {
+      const nuevo = new Set(prev);
+      if (nuevo.has(examenId)) {
+        nuevo.delete(examenId);
+      } else {
+        nuevo.add(examenId);
+      }
+      return nuevo;
+    });
+  };
+
+  const renderExamen = (
+    examen: ExamenCalendario, 
+    fecha?: string, 
+    sesiones?: SesionCalendario[]
+  ) => {
     const fechaExamen = fecha || examen.fecha;
+    const estaExpandido = examenesExpandidos.has(examen.examen_id);
+    const sesionesDelExamen = sesiones || [];
     
     return (
-      <View key={examen.examen_id} style={[styles.examenCard, { borderLeftColor: '#7C3AED' }]}>
-        <View style={styles.examenHeader}>
-          <Text style={styles.examenFecha}>
-            {new Date(fechaExamen).toLocaleDateString('es-ES', { 
-              weekday: 'short',
-              day: 'numeric',
-              month: 'short'
-            })}
-          </Text>
-        </View>
-        <Text style={styles.examenNombre}>📝 {examen.nombre}</Text>
-        <Text style={styles.examenMateria}>{examen.materia}</Text>
-        <Text style={styles.examenSesiones}>
-          {examen.total_sesiones_planificadas} sesiones planificadas
-        </Text>
+      <View key={examen.examen_id} style={styles.examenWrapper}>
+        <TouchableOpacity
+          style={[styles.examenCard, { borderLeftColor: '#7C3AED' }]}
+          onPress={() => toggleExamen(examen.examen_id)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.examenCardContent}>
+            <View style={styles.examenHeader}>
+              <Text style={styles.examenFecha}>
+                {new Date(fechaExamen).toLocaleDateString('es-ES', { 
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short'
+                })}
+              </Text>
+              <Text style={styles.examenExpandIcon}>
+                {estaExpandido ? '▼' : '▶'}
+              </Text>
+            </View>
+            <Text style={styles.examenNombre}>📝 {examen.nombre}</Text>
+            <Text style={styles.examenMateria}>{examen.materia}</Text>
+            <Text style={styles.examenSesiones}>
+              {examen.total_sesiones_planificadas} sesiones planificadas
+            </Text>
+          </View>
+        </TouchableOpacity>
+        
+        {/* Sesiones expandidas */}
+        {estaExpandido && sesionesDelExamen.length > 0 && (
+          <View style={styles.sesionesExpandidas}>
+            {sesionesDelExamen.map(sesion => renderSesion(sesion, sesion.fecha.split('T')[0]))}
+          </View>
+        )}
       </View>
     );
   };
@@ -232,30 +269,41 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey }: C
           </View>
         ) : (
           <View style={styles.actividadesContainer}>
-            {actividadesProximas2Semanas
-              .filter(dia => dia.tieneActividades)
-              .flatMap(dia => [
-                ...dia.sesiones.map(sesion => ({ ...sesion, fechaDia: dia.fecha, tipo: 'sesion' as const })),
-                ...dia.examenes.map(examen => ({ ...examen, fechaDia: dia.fecha, tipo: 'examen' as const }))
-              ])
-              .sort((a, b) => {
-                // Ordenar por fecha
-                const fechaA = new Date(a.fechaDia).getTime();
-                const fechaB = new Date(b.fechaDia).getTime();
-                if (fechaA !== fechaB) return fechaA - fechaB;
-                
-                // Si es el mismo día, exámenes primero, luego sesiones
-                if (a.tipo === 'examen' && b.tipo === 'sesion') return -1;
-                if (a.tipo === 'sesion' && b.tipo === 'examen') return 1;
-                return 0;
-              })
-              .map((item, index) => {
-                if (item.tipo === 'sesion') {
-                  return renderSesion(item as SesionCalendario & { fechaDia: string }, item.fechaDia);
-                } else {
-                  return renderExamen(item as ExamenCalendario & { fechaDia: string }, item.fechaDia);
-                }
-              })}
+            {(() => {
+              // Agrupar sesiones por examen_id
+              const sesionesPorExamen = new Map<string, SesionCalendario[]>();
+              const examenesConFecha: Array<{ examen: ExamenCalendario; fecha: string }> = [];
+              
+              actividadesProximas2Semanas
+                .filter(dia => dia.tieneActividades)
+                .forEach(dia => {
+                  // Agregar exámenes
+                  dia.examenes.forEach(examen => {
+                    examenesConFecha.push({ examen, fecha: dia.fecha });
+                  });
+                  
+                  // Agrupar sesiones por examen_id
+                  dia.sesiones.forEach(sesion => {
+                    if (!sesionesPorExamen.has(sesion.examen_id)) {
+                      sesionesPorExamen.set(sesion.examen_id, []);
+                    }
+                    sesionesPorExamen.get(sesion.examen_id)!.push(sesion);
+                  });
+                });
+              
+              // Ordenar exámenes por fecha
+              examenesConFecha.sort((a, b) => {
+                const fechaA = new Date(a.fecha).getTime();
+                const fechaB = new Date(b.fecha).getTime();
+                return fechaA - fechaB;
+              });
+              
+              // Renderizar solo exámenes (las sesiones se muestran dentro cuando se expanden)
+              return examenesConFecha.map(({ examen, fecha }) => {
+                const sesiones = sesionesPorExamen.get(examen.examen_id) || [];
+                return renderExamen(examen, fecha, sesiones);
+              });
+            })()}
           </View>
         )}
       </View>
@@ -329,10 +377,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
   },
+  examenWrapper: {
+    marginBottom: 8,
+  },
   examenCard: {
     backgroundColor: 'white',
-    padding: 12,
-    marginBottom: 8,
     borderRadius: 8,
     borderLeftWidth: 4,
     shadowColor: '#000',
@@ -341,8 +390,26 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
+  examenCardContent: {
+    padding: 12,
+  },
   examenHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
+  },
+  examenExpandIcon: {
+    fontSize: 12,
+    color: '#7C3AED',
+    fontWeight: 'bold',
+  },
+  sesionesExpandidas: {
+    marginTop: 4,
+    marginLeft: 16,
+    paddingLeft: 12,
+    borderLeftWidth: 2,
+    borderLeftColor: '#E5E7EB',
   },
   examenFecha: {
     fontSize: 12,
