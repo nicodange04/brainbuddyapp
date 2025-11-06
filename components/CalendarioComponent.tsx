@@ -7,15 +7,17 @@ import {
     obtenerColorDot,
     SesionCalendario
 } from '@/services/calendar';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 
 interface CalendarioProps {
   onDiaSeleccionado?: (dia: DiaCalendario) => void;
+  refreshKey?: number; // Clave para forzar refresh
 }
 
-export default function CalendarioComponent({ onDiaSeleccionado }: CalendarioProps) {
+export default function CalendarioComponent({ onDiaSeleccionado, refreshKey }: CalendarioProps) {
   const { user } = useAuth();
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('');
   const [diasCalendario, setDiasCalendario] = useState<DiaCalendario[]>([]);
@@ -29,13 +31,6 @@ export default function CalendarioComponent({ onDiaSeleccionado }: CalendarioPro
   
   const fechaInicio = primerDiaMes.toISOString().split('T')[0];
   const fechaFin = ultimoDiaMes.toISOString().split('T')[0];
-
-  // Cargar datos del calendario
-  useEffect(() => {
-    if (user?.usuario?.usuario_id) {
-      cargarDatosCalendario();
-    }
-  }, [user]);
 
   const cargarDatosCalendario = async () => {
     if (!user?.usuario?.usuario_id) return;
@@ -68,6 +63,23 @@ export default function CalendarioComponent({ onDiaSeleccionado }: CalendarioPro
       setLoading(false);
     }
   };
+
+  // Cargar datos del calendario cuando cambia el usuario o refreshKey
+  useEffect(() => {
+    if (user?.usuario?.usuario_id) {
+      cargarDatosCalendario();
+    }
+  }, [user, refreshKey]); // Agregar refreshKey como dependencia
+
+  // Refrescar cuando la pantalla recibe foco (cuando vuelves de otra pantalla)
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.usuario?.usuario_id) {
+        console.log('🔄 Pantalla enfocada, refrescando calendario...');
+        cargarDatosCalendario();
+      }
+    }, [user?.usuario?.usuario_id])
+  );
 
   // Crear objeto markedDates para el calendario
   const crearMarkedDates = () => {

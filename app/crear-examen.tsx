@@ -1,6 +1,7 @@
 import { DateInput } from '@/components/date-input';
 import { useAuth } from '@/contexts/AuthContext';
 import { uploadCompleteFile } from '@/services/files';
+import { distribuirSesionesParaExamen } from '@/services/sessionDistribution';
 import { supabase } from '@/services/supabase';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -218,10 +219,50 @@ export default function CrearExamenScreen() {
           return;
         }
 
-        console.log('Examen creado exitosamente:', data);
-        Alert.alert('¡Éxito!', 'Examen creado correctamente', [
-          { text: 'OK', onPress: () => router.push('/(tabs)/calendario') }
-        ]);
+        console.log('✅ Examen creado exitosamente:', data);
+        const examenId = data.examen_id;
+        
+        // Automáticamente crear sesiones de estudio para este examen
+        if (user?.usuario?.usuario_id && examenId) {
+          console.log('🔄 Creando sesiones de estudio automáticamente...');
+          try {
+            const resultado = await distribuirSesionesParaExamen(examenId, user.usuario.usuario_id);
+            
+            if (resultado.error) {
+              console.error('⚠️ Error al crear sesiones:', resultado.error);
+              Alert.alert(
+                'Examen creado',
+                `El examen se creó correctamente, pero hubo un problema al generar las sesiones de estudio: ${resultado.error}`,
+                [
+                  { text: 'OK', onPress: () => router.push('/(tabs)/calendario') }
+                ]
+              );
+            } else {
+              console.log(`✅ ${resultado.sesiones_creadas} sesiones de estudio creadas automáticamente`);
+              Alert.alert(
+                '¡Éxito!',
+                `Examen creado correctamente.\n\nSe generaron ${resultado.sesiones_creadas} sesiones de estudio automáticamente.`,
+                [
+                  { text: 'OK', onPress: () => router.push('/(tabs)/calendario') }
+                ]
+              );
+            }
+          } catch (error) {
+            console.error('❌ Error al crear sesiones automáticamente:', error);
+            Alert.alert(
+              'Examen creado',
+              'El examen se creó correctamente, pero hubo un problema al generar las sesiones de estudio. Puedes generarlas manualmente desde el calendario.',
+              [
+                { text: 'OK', onPress: () => router.push('/(tabs)/calendario') }
+              ]
+            );
+          }
+        } else {
+          // Si no hay usuario o examen_id, solo mostrar éxito
+          Alert.alert('¡Éxito!', 'Examen creado correctamente', [
+            { text: 'OK', onPress: () => router.push('/(tabs)/calendario') }
+          ]);
+        }
       }
 
     } catch (error) {

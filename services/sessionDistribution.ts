@@ -167,27 +167,69 @@ function distribuirTemas(
 
 /**
  * Crea las sesiones de estudio en la base de datos
+ * IMPORTANTE: Elimina sesiones existentes del examen antes de crear nuevas para evitar duplicados
  */
 async function crearSesionesEstudio(
   examenId: string,
+  usuarioId: string,
   sesiones: { tema: string; fecha: string; turno: string }[]
 ): Promise<number> {
   try {
-    const sesionesParaInsertar = sesiones.map((sesion, index) => ({
-      examen_id: examenId,
-      nombre: `Sesión: ${sesion.tema}`,
-      tema: sesion.tema,
-      fecha: `${sesion.fecha} ${sesion.turno === 'Mañana' ? '09:00' : sesion.turno === 'Tarde' ? '15:00' : '20:00'}:00`,
-      estado: 'NoCompletada' as const,
-      observacion: `Turno: ${sesion.turno}`
-    }));
+    console.log(`🗑️ Eliminando sesiones existentes para examen ${examenId}...`);
+    
+    // Primero eliminar todas las sesiones existentes de este examen
+    const { error: deleteError } = await supabase
+      .from('sesionestudio')
+      .delete()
+      .eq('examen_id', examenId);
+
+    if (deleteError) {
+      console.error('⚠️ Error al eliminar sesiones existentes:', deleteError);
+      // Continuar de todas formas, pero registrar el error
+    } else {
+      console.log('✅ Sesiones existentes eliminadas correctamente');
+    }
+
+    // Esperar un momento para asegurar que la eliminación se complete
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    console.log(`📝 Creando ${sesiones.length} nuevas sesiones para examen ${examenId}...`);
+    
+    const sesionesParaInsertar = sesiones.map((sesion, index) => {
+      const hora = sesion.turno === 'Mañana' ? '09:00' : sesion.turno === 'Tarde' ? '15:00' : '20:00';
+      const fechaCompleta = `${sesion.fecha}T${hora}:00`;
+      
+      // Construir objeto con campos que existen en la tabla según el esquema real:
+      // - sesion_id: se genera automáticamente (UUID)
+      // - examen_id: requerido (FK)
+      // - nombre: requerido
+      // - tema: requerido
+      // - fecha: requerido (TIMESTAMP)
+      // - observacion: opcional (texto para guardar el turno)
+      // - estado: requerido
+      // - mini_quiz_id: opcional (no lo incluimos)
+      // - created_at/updated_at: se generan automáticamente
+      return {
+        examen_id: examenId,
+        nombre: `Sesión: ${sesion.tema}`,
+        tema: sesion.tema,
+        fecha: fechaCompleta, // TIMESTAMP con fecha y hora completa
+        observacion: `Turno: ${sesion.turno}`, // El turno se guarda en observacion como texto
+        estado: 'NoCompletada' as const
+      };
+    });
 
     const { data, error } = await supabase
       .from('sesionestudio')
       .insert(sesionesParaInsertar)
       .select();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error al insertar sesiones:', error);
+      throw error;
+    }
+    
+    console.log(`✅ ${data?.length || 0} sesiones creadas correctamente`);
     return data?.length || 0;
   } catch (error) {
     console.error('Error al crear sesiones de estudio:', error);
@@ -270,8 +312,8 @@ export async function distribuirSesionesParaExamen(
       };
     }
 
-    // 5. Crear sesiones en la base de datos
-    const sesionesCreadas = await crearSesionesEstudio(examenId, sesiones);
+    // 5. Crear sesiones en la base de datos (elimina sesiones existentes antes de crear nuevas)
+    const sesionesCreadas = await crearSesionesEstudio(examenId, alumnoId, sesiones);
 
     // 6. Actualizar total de sesiones en el examen
     await actualizarTotalSesiones(examenId, sesionesCreadas);

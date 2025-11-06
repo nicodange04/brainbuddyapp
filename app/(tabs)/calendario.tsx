@@ -13,6 +13,7 @@ export default function CalendarioScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [isDistribuyendo, setIsDistribuyendo] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // Clave para forzar refresh del calendario
 
   const handleDistribuirSesiones = async () => {
     if (!user?.usuario?.usuario_id) {
@@ -39,6 +40,10 @@ export default function CalendarioScreen() {
           `Se crearon ${totalSesiones} sesiones de estudio para todos los exámenes.`
         );
       }
+      
+      // Forzar refresh del calendario después de crear las sesiones
+      console.log('🔄 Forzando refresh del calendario...');
+      setRefreshKey(prev => prev + 1);
     } catch (error) {
       console.error('Error al distribuir sesiones:', error);
       Alert.alert('Error', 'No se pudieron distribuir las sesiones');
@@ -95,6 +100,7 @@ export default function CalendarioScreen() {
 
         {/* Componente de calendario */}
         <CalendarioComponent 
+          refreshKey={refreshKey}
           onDiaSeleccionado={(dia) => {
             console.log('Día seleccionado:', dia);
           }}
