@@ -1,56 +1,15 @@
 import CalendarioComponent from '@/components/CalendarioComponent';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/contexts/AuthContext';
-import { distribuirSesionesParaTodosExamenes } from '@/services/sessionDistribution';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CalendarioScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
-  const [isDistribuyendo, setIsDistribuyendo] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // Clave para forzar refresh del calendario
-
-  const handleDistribuirSesiones = async () => {
-    if (!user?.usuario?.usuario_id) {
-      Alert.alert('Error', 'No hay usuario autenticado');
-      return;
-    }
-
-    setIsDistribuyendo(true);
-    try {
-      const resultados = await distribuirSesionesParaTodosExamenes(user.usuario.usuario_id);
-      
-      const totalSesiones = resultados.reduce((sum, r) => sum + r.sesiones_creadas, 0);
-      const examenesConError = resultados.filter(r => r.error);
-      
-      if (examenesConError.length > 0) {
-        const errores = examenesConError.map(r => r.error).join('\n');
-        Alert.alert(
-          'Distribución completada con errores',
-          `Se crearon ${totalSesiones} sesiones.\n\nErrores:\n${errores}`
-        );
-      } else {
-        Alert.alert(
-          '¡Distribución exitosa!',
-          `Se crearon ${totalSesiones} sesiones de estudio para todos los exámenes.`
-        );
-      }
-      
-      // Forzar refresh del calendario después de crear las sesiones
-      console.log('🔄 Forzando refresh del calendario...');
-      setRefreshKey(prev => prev + 1);
-    } catch (error) {
-      console.error('Error al distribuir sesiones:', error);
-      Alert.alert('Error', 'No se pudieron distribuir las sesiones');
-    } finally {
-      setIsDistribuyendo(false);
-    }
-  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -60,15 +19,24 @@ export default function CalendarioScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header con acciones */}
-        <ThemedView style={styles.header}>
-          <ThemedText type="title">📅 CALENDARIO DE ESTUDIO</ThemedText>
-          <ThemedText type="defaultSemiBold">
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>📅 Calendario de Estudio</Text>
+          <Text style={styles.headerSubtitle}>
             Visualiza tus sesiones de estudio y exámenes
-          </ThemedText>
-        </ThemedView>
+          </Text>
+        </View>
+
+        {/* Calendario */}
+        <CalendarioComponent 
+          refreshKey={refreshKey}
+          showOnlyCalendar={true}
+          onDiaSeleccionado={(dia) => {
+            console.log('Día seleccionado:', dia);
+          }}
+        />
 
         {/* Botones de acción */}
-        <ThemedView style={styles.actionsContainer}>
+        <View style={styles.actionsContainer}>
           <TouchableOpacity 
             style={styles.actionButton}
             onPress={() => router.push('/disponibilidad')}
@@ -86,21 +54,12 @@ export default function CalendarioScreen() {
               📝 Agregar Examen
             </Text>
           </TouchableOpacity>
+        </View>
 
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.algorithmButton]}
-            onPress={handleDistribuirSesiones}
-            disabled={isDistribuyendo}
-          >
-            <Text style={styles.actionButtonText}>
-              {isDistribuyendo ? '🔄 Distribuyendo...' : '🧠 Generar Sesiones'}
-            </Text>
-          </TouchableOpacity>
-        </ThemedView>
-
-        {/* Componente de calendario */}
+        {/* Actividades */}
         <CalendarioComponent 
           refreshKey={refreshKey}
+          showOnlyActivities={true}
           onDiaSeleccionado={(dia) => {
             console.log('Día seleccionado:', dia);
           }}
@@ -113,48 +72,70 @@ export default function CalendarioScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F9FAFB', // offWhite del design system
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 24, // 1.5rem (xl spacing)
   },
   header: {
-    backgroundColor: 'white',
-    padding: 16,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: '#FFFFFF',
+    padding: 24, // xl spacing
+    marginBottom: 12, // md spacing
+    borderRadius: 24, // card borderRadius (1.5rem)
+    shadowColor: '#8B5CF6', // Soft shadow con color violet
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12, // soft shadow del design system
+    shadowRadius: 24,
+    elevation: 4,
+    marginHorizontal: 16, // md spacing
+    marginTop: 12,
+  },
+  headerTitle: {
+    fontSize: 22, // 2xl font size
+    fontWeight: '700', // bold
+    color: '#1F2937', // neutral.black
+    marginBottom: 6,
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 14, // sm font size
+    fontWeight: '500', // medium
+    color: '#6B7280', // neutral.mediumGray
+    lineHeight: 20,
   },
   actionsContainer: {
-    backgroundColor: 'white',
-    padding: 16,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: '#FFFFFF',
+    padding: 20, // lg spacing
+    marginBottom: 12,
+    borderRadius: 24, // card borderRadius
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 4,
+    marginHorizontal: 16,
+    gap: 12, // md spacing entre botones
   },
   actionButton: {
-    backgroundColor: '#8B5CF6',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginVertical: 4,
+    backgroundColor: '#8B5CF6', // primary.violet
+    paddingVertical: 14, // 0.875rem
+    paddingHorizontal: 24, // 1.5rem
+    borderRadius: 9999, // full (pill-shaped button)
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
   actionButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  algorithmButton: {
-    backgroundColor: '#10B981',
+    fontSize: 15, // base font size
+    fontWeight: '600', // semibold
+    letterSpacing: 0.3,
   },
 });

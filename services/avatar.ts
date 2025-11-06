@@ -48,6 +48,27 @@ export function seleccionarColorAleatorio(): AvatarColor {
 }
 
 /**
+ * Selecciona un color determinístico basado en el nombre del usuario
+ * @param nombre - Nombre del usuario
+ * @returns Color hexadecimal
+ */
+export function seleccionarColorPorNombre(nombre: string): AvatarColor {
+  if (!nombre || nombre.trim() === '') {
+    return AVATAR_COLORS[0];
+  }
+  
+  // Sumar los códigos ASCII de los caracteres del nombre
+  let suma = 0;
+  for (let i = 0; i < nombre.length; i++) {
+    suma += nombre.charCodeAt(i);
+  }
+  
+  // Usar el módulo para obtener un índice válido
+  const indice = suma % AVATAR_COLORS.length;
+  return AVATAR_COLORS[indice];
+}
+
+/**
  * Genera un código de vinculación de 6 dígitos alfanumérico
  * @returns Código de 6 caracteres (ej: "ABC123")
  */

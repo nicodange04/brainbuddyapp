@@ -15,9 +15,11 @@ import { Calendar, DateData } from 'react-native-calendars';
 interface CalendarioProps {
   onDiaSeleccionado?: (dia: DiaCalendario) => void;
   refreshKey?: number; // Clave para forzar refresh
+  showOnlyCalendar?: boolean; // Si es true, solo muestra el calendario
+  showOnlyActivities?: boolean; // Si es true, solo muestra las actividades
 }
 
-export default function CalendarioComponent({ onDiaSeleccionado, refreshKey }: CalendarioProps) {
+export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, showOnlyCalendar, showOnlyActivities }: CalendarioProps) {
   const { user } = useAuth();
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('');
   const [diasCalendario, setDiasCalendario] = useState<DiaCalendario[]>([]);
@@ -197,9 +199,11 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey }: C
                   month: 'short'
                 })}
               </Text>
-              <Text style={styles.examenExpandIcon}>
-                {estaExpandido ? '▼' : '▶'}
-              </Text>
+              <View style={styles.examenExpandIconContainer}>
+                <Text style={styles.examenExpandIcon}>
+                  {estaExpandido ? '▼' : '▶'}
+                </Text>
+              </View>
             </View>
             <Text style={styles.examenNombre}>📝 {examen.nombre}</Text>
             <Text style={styles.examenMateria}>{examen.materia}</Text>
@@ -220,34 +224,140 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey }: C
   };
 
 
+  // Renderizar solo calendario
+  if (showOnlyCalendar) {
+    return (
+      <View style={styles.calendarWrapper}>
+        <Calendar
+          onDayPress={onDayPress}
+          markedDates={crearMarkedDates()}
+          theme={{
+            backgroundColor: '#FFFFFF',
+            calendarBackground: '#FFFFFF',
+            textSectionTitleColor: '#8B5CF6', // primary.violet
+            selectedDayBackgroundColor: '#8B5CF6',
+            selectedDayTextColor: '#FFFFFF',
+            todayTextColor: '#7C3AED', // violetDark
+            dayTextColor: '#1F2937', // neutral.black
+            textDisabledColor: '#E5E7EB', // lightGray
+            dotColor: '#8B5CF6',
+            selectedDotColor: '#FFFFFF',
+            arrowColor: '#8B5CF6',
+            monthTextColor: '#1F2937', // neutral.black para mejor contraste
+            indicatorColor: '#8B5CF6',
+            textDayFontWeight: '500', // medium weight
+            textMonthFontWeight: '700', // bold
+            textDayHeaderFontWeight: '600', // semibold
+            textDayFontSize: 15,
+            textMonthFontSize: 18, // lg font size
+            textDayHeaderFontSize: 13
+          }}
+          style={styles.calendar}
+          markingType="simple"
+        />
+      </View>
+    );
+  }
+
+  // Renderizar solo actividades
+  if (showOnlyActivities) {
+    return (
+      <View style={styles.actividadesDia}>
+        <Text style={styles.actividadesTitulo}>
+          📋 Próximas Actividades
+        </Text>
+        <Text style={styles.actividadesSubtitle}>
+          Exámenes y sesiones de estudio de las próximas 2 semanas
+        </Text>
+        
+        {actividadesProximas2Semanas.length === 0 ? (
+          <View style={styles.sinActividades}>
+            <View style={styles.sinActividadesIcon}>
+              <Text style={styles.sinActividadesIconText}>📅</Text>
+            </View>
+            <Text style={styles.sinActividadesText}>
+              No hay actividades programadas
+            </Text>
+            <Text style={styles.sinActividadesSubtext}>
+              Crea un examen o configura tu disponibilidad para comenzar
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.actividadesContainer}>
+            {(() => {
+              // Agrupar sesiones por examen_id
+              const sesionesPorExamen = new Map<string, SesionCalendario[]>();
+              const examenesConFecha: Array<{ examen: ExamenCalendario; fecha: string }> = [];
+              
+              actividadesProximas2Semanas
+                .filter(dia => dia.tieneActividades)
+                .forEach(dia => {
+                  // Agregar exámenes
+                  dia.examenes.forEach(examen => {
+                    examenesConFecha.push({ examen, fecha: dia.fecha });
+                  });
+                  
+                  // Agrupar sesiones por examen_id
+                  dia.sesiones.forEach(sesion => {
+                    if (!sesionesPorExamen.has(sesion.examen_id)) {
+                      sesionesPorExamen.set(sesion.examen_id, []);
+                    }
+                    sesionesPorExamen.get(sesion.examen_id)!.push(sesion);
+                  });
+                });
+              
+              // Ordenar exámenes por fecha
+              examenesConFecha.sort((a, b) => {
+                const fechaA = new Date(a.fecha).getTime();
+                const fechaB = new Date(b.fecha).getTime();
+                return fechaA - fechaB;
+              });
+              
+              // Renderizar solo exámenes (las sesiones se muestran dentro cuando se expanden)
+              return examenesConFecha.map(({ examen, fecha }) => {
+                const sesiones = sesionesPorExamen.get(examen.examen_id) || [];
+                return renderExamen(examen, fecha, sesiones);
+              });
+            })()}
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // Renderizar ambos (comportamiento por defecto)
   return (
     <View style={styles.container}>
       {/* Calendario */}
-      <Calendar
-        onDayPress={onDayPress}
-        markedDates={crearMarkedDates()}
-        theme={{
-          backgroundColor: '#ffffff',
-          calendarBackground: '#ffffff',
-          textSectionTitleColor: '#8B5CF6',
-          selectedDayBackgroundColor: '#8B5CF6',
-          selectedDayTextColor: '#ffffff',
-          todayTextColor: '#8B5CF6',
-          dayTextColor: '#2d4150',
-          textDisabledColor: '#d9e1e8',
-          dotColor: '#8B5CF6',
-          selectedDotColor: '#ffffff',
-          arrowColor: '#8B5CF6',
-          monthTextColor: '#8B5CF6',
-          indicatorColor: '#8B5CF6',
-          textDayFontWeight: '300',
-          textMonthFontWeight: 'bold',
-          textDayHeaderFontWeight: '300',
-          textDayFontSize: 16,
-          textMonthFontSize: 16,
-          textDayHeaderFontSize: 13
-        }}
-      />
+      <View style={styles.calendarWrapper}>
+        <Calendar
+          onDayPress={onDayPress}
+          markedDates={crearMarkedDates()}
+          theme={{
+            backgroundColor: '#FFFFFF',
+            calendarBackground: '#FFFFFF',
+            textSectionTitleColor: '#8B5CF6', // primary.violet
+            selectedDayBackgroundColor: '#8B5CF6',
+            selectedDayTextColor: '#FFFFFF',
+            todayTextColor: '#7C3AED', // violetDark
+            dayTextColor: '#1F2937', // neutral.black
+            textDisabledColor: '#E5E7EB', // lightGray
+            dotColor: '#8B5CF6',
+            selectedDotColor: '#FFFFFF',
+            arrowColor: '#8B5CF6',
+            monthTextColor: '#1F2937', // neutral.black para mejor contraste
+            indicatorColor: '#8B5CF6',
+            textDayFontWeight: '500', // medium weight
+            textMonthFontWeight: '700', // bold
+            textDayHeaderFontWeight: '600', // semibold
+            textDayFontSize: 15,
+            textMonthFontSize: 18, // lg font size
+            textDayHeaderFontSize: 13
+          }}
+          style={styles.calendar}
+          markingType="simple"
+        />
+      </View>
 
       {/* Actividades Próximas - Siempre visible */}
       <View style={styles.actividadesDia}>
@@ -260,11 +370,14 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey }: C
         
         {actividadesProximas2Semanas.length === 0 ? (
           <View style={styles.sinActividades}>
+            <View style={styles.sinActividadesIcon}>
+              <Text style={styles.sinActividadesIconText}>📅</Text>
+            </View>
             <Text style={styles.sinActividadesText}>
-              No hay actividades programadas en las próximas 2 semanas
+              No hay actividades programadas
             </Text>
             <Text style={styles.sinActividadesSubtext}>
-              Crea un examen o configura tu disponibilidad para ver actividades
+              Crea un examen o configura tu disponibilidad para comenzar
             </Text>
           </View>
         ) : (
@@ -314,138 +427,200 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey }: C
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F9FAFB', // offWhite del design system
+  },
+  calendarWrapper: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16, // md spacing
+    marginBottom: 16,
+    borderRadius: 24, // card borderRadius
+    padding: 16, // md spacing
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 4,
+    overflow: 'hidden',
+  },
+  calendar: {
+    borderRadius: 20,
   },
   actividadesDia: {
-    backgroundColor: 'white',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16, // md spacing
+    marginBottom: 16,
+    padding: 24, // xl spacing (1.5rem)
+    borderRadius: 24, // card borderRadius (1.5rem)
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12, // soft shadow
+    shadowRadius: 24,
+    elevation: 4,
   },
   actividadesTitulo: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 4,
+    fontSize: 20, // xl font size
+    fontWeight: '700', // bold
+    color: '#1F2937', // neutral.black
+    marginBottom: 6,
+    letterSpacing: -0.3,
   },
   actividadesSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 12,
+    fontSize: 14, // sm font size
+    fontWeight: '500', // medium
+    color: '#6B7280', // neutral.mediumGray
+    marginBottom: 20, // xl spacing
+    lineHeight: 20,
   },
   actividadesContainer: {
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   sesionCard: {
-    backgroundColor: 'white',
-    padding: 12,
-    marginBottom: 8,
-    borderRadius: 8,
+    backgroundColor: '#F9FAFB', // offWhite para diferenciar de examen
+    padding: 16, // md spacing
+    marginBottom: 12, // md spacing
+    borderRadius: 16, // xl borderRadius
     borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    borderLeftColor: '#A78BFA', // violetLight
+    shadowColor: '#A78BFA',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   sesionHeader: {
-    marginBottom: 8,
+    marginBottom: 10,
   },
   sesionFecha: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#A78BFA',
+    fontSize: 11, // xs font size
+    fontWeight: '600', // semibold
+    color: '#A78BFA', // violetLight
     textTransform: 'capitalize',
+    letterSpacing: 0.5,
   },
   sesionTema: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
+    fontSize: 16, // base font size
+    fontWeight: '600', // semibold
+    color: '#1F2937', // neutral.black
+    marginBottom: 6,
+    lineHeight: 22,
   },
   sesionTurno: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
+    fontSize: 13, // sm font size
+    fontWeight: '500', // medium
+    color: '#6B7280', // neutral.mediumGray
+    marginBottom: 6,
   },
   sesionEstado: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 12, // sm font size
+    fontWeight: '500', // medium
+    color: '#6B7280', // neutral.mediumGray
   },
   examenWrapper: {
-    marginBottom: 8,
+    marginBottom: 12, // md spacing
   },
   examenCard: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20, // 2xl borderRadius
+    borderLeftWidth: 5, // Más grueso para mejor jerarquía
+    shadowColor: '#7C3AED', // violetDark
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 3,
+    overflow: 'hidden',
   },
   examenCardContent: {
-    padding: 12,
+    padding: 18, // lg spacing
   },
   examenHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12, // md spacing
+  },
+  examenExpandIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16, // full
+    backgroundColor: '#F3F4F6', // lightGray
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   examenExpandIcon: {
     fontSize: 12,
-    color: '#7C3AED',
-    fontWeight: 'bold',
+    color: '#7C3AED', // violetDark
+    fontWeight: '700', // bold
   },
   sesionesExpandidas: {
-    marginTop: 4,
-    marginLeft: 16,
-    paddingLeft: 12,
-    borderLeftWidth: 2,
-    borderLeftColor: '#E5E7EB',
+    marginTop: 8,
+    marginLeft: 20,
+    paddingLeft: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: '#E5E7EB', // lightGray
+    paddingTop: 4,
   },
   examenFecha: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#7C3AED',
+    fontSize: 11, // xs font size
+    fontWeight: '700', // bold
+    color: '#7C3AED', // violetDark
     textTransform: 'capitalize',
+    letterSpacing: 0.5,
   },
   examenNombre: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
+    fontSize: 18, // lg font size
+    fontWeight: '700', // bold
+    color: '#1F2937', // neutral.black
+    marginBottom: 6,
+    lineHeight: 24,
   },
   examenMateria: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  examenSesiones: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  sinActividades: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  sinActividadesText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
+    fontSize: 14, // sm font size
+    fontWeight: '500', // medium
+    color: '#6B7280', // neutral.mediumGray
     marginBottom: 8,
   },
-  sinActividadesSubtext: {
-    fontSize: 14,
-    color: '#9CA3AF',
+  examenSesiones: {
+    fontSize: 12, // sm font size
+    fontWeight: '600', // semibold
+    color: '#8B5CF6', // primary.violet
+    backgroundColor: '#F3F4F6', // lightGray con opacidad
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12, // lg borderRadius
+    alignSelf: 'flex-start',
+    overflow: 'hidden',
+  },
+  sinActividades: {
+    padding: 40, // 2xl spacing
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sinActividadesIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32, // full
+    backgroundColor: '#F3F4F6', // lightGray
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16, // md spacing
+  },
+  sinActividadesIconText: {
+    fontSize: 32,
+  },
+  sinActividadesText: {
+    fontSize: 17, // lg font size
+    fontWeight: '600', // semibold
+    color: '#1F2937', // neutral.black
     textAlign: 'center',
-    fontStyle: 'italic',
+    marginBottom: 8,
+    lineHeight: 24,
+  },
+  sinActividadesSubtext: {
+    fontSize: 14, // sm font size
+    fontWeight: '400', // normal
+    color: '#6B7280', // neutral.mediumGray
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
   },
 });
