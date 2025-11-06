@@ -3,13 +3,13 @@ import { supabase } from '@/services/supabase';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface DisponibilidadData {
@@ -34,7 +34,17 @@ const getDiaSemanaNumber = (diaSemana: string): number => {
     'Viernes': 5,
     'Sábado': 6
   };
-  return diasMap[diaSemana] || 1; // Default a Lunes si no encuentra
+  const diaTrimmed = diaSemana.trim();
+  const numero = diasMap[diaTrimmed];
+  
+  if (numero === undefined) {
+    console.error(`❌ ERROR: No se encontró mapeo para "${diaSemana}" (trimmed: "${diaTrimmed}")`);
+    console.error(`   Mapa disponible:`, Object.keys(diasMap));
+    throw new Error(`Día de la semana inválido: "${diaSemana}"`);
+  }
+  
+  console.log(`   ✅ Mapeo correcto: "${diaTrimmed}" -> ${numero}`);
+  return numero;
 };
 
 // Función para convertir número de día de la semana a nombre
@@ -110,12 +120,23 @@ export default function DisponibilidadScreen() {
 
       // Mapear los datos de la BD a la estructura de la UI
       if (data && data.length > 0) {
+        console.log('🔍 Procesando registros de disponibilidad:');
         data.forEach((registro: { dia_semana: number; turno: string }) => {
+          console.log(`  - dia_semana: ${registro.dia_semana}, turno: ${registro.turno}`);
           const diaNombre = getDiaSemanaName(registro.dia_semana);
+          console.log(`    -> Mapeado a: "${diaNombre}"`);
           const diaIndex = DIAS_SEMANA.indexOf(diaNombre);
+          console.log(`    -> Índice en array: ${diaIndex}`);
           
-          if (diaIndex !== -1 && !initialData[diaIndex].turnos.includes(registro.turno)) {
-            initialData[diaIndex].turnos.push(registro.turno);
+          if (diaIndex !== -1) {
+            if (!initialData[diaIndex].turnos.includes(registro.turno)) {
+              initialData[diaIndex].turnos.push(registro.turno);
+              console.log(`    ✅ Agregado turno "${registro.turno}" a ${diaNombre}`);
+            } else {
+              console.log(`    ⚠️ Turno "${registro.turno}" ya existe en ${diaNombre}`);
+            }
+          } else {
+            console.error(`    ❌ ERROR: No se encontró índice para "${diaNombre}"`);
           }
         });
       }
@@ -131,15 +152,21 @@ export default function DisponibilidadScreen() {
   };
 
   const toggleDia = (diaIndex: number) => {
+    console.log(`🔄 toggleDia llamado con índice: ${diaIndex}`);
+    console.log(`   Día en ese índice: "${DIAS_SEMANA[diaIndex]}"`);
     setDisponibilidad(prev => {
       const newData = [...prev];
+      console.log(`   Estado actual de ${DIAS_SEMANA[diaIndex]}:`, newData[diaIndex].turnos);
       if (newData[diaIndex].turnos.length > 0) {
         // Si tiene turnos, desactivar día completo
+        console.log(`   ❌ Desactivando ${DIAS_SEMANA[diaIndex]}`);
         newData[diaIndex].turnos = [];
       } else {
         // Si no tiene turnos, activar con todos los turnos
+        console.log(`   ✅ Activando ${DIAS_SEMANA[diaIndex]} con todos los turnos`);
         newData[diaIndex].turnos = [...TURNOS];
       }
+      console.log(`   Estado final de ${DIAS_SEMANA[diaIndex]}:`, newData[diaIndex].turnos);
       return newData;
     });
   };
@@ -151,6 +178,10 @@ export default function DisponibilidadScreen() {
     // Primero eliminar todos los registros del usuario con múltiples intentos
     console.log('🗑️ Eliminando registros existentes...');
     
+    if (!user?.usuario?.usuario_id) {
+      throw new Error('Usuario no autenticado');
+    }
+
     for (let intento = 0; intento < 3; intento++) {
       const { error: deleteError } = await supabase
         .from('disponibilidad')
@@ -234,15 +265,26 @@ export default function DisponibilidadScreen() {
 
     try {
       // Preparar datos a insertar
+      console.log('🔍 Estado completo de disponibilidad antes de guardar:');
+      disponibilidad.forEach((dia, index) => {
+        console.log(`   [${index}] ${dia.diaSemana}: [${dia.turnos.join(', ')}]`);
+      });
+      
       const disponibilidadToInsert = disponibilidad
         .filter(dia => dia.turnos.length > 0)
-        .flatMap(dia => 
-          dia.turnos.map(turno => ({
+        .flatMap(dia => {
+          const diaNumero = getDiaSemanaNumber(dia.diaSemana);
+          console.log(`📝 Preparando "${dia.diaSemana}" -> dia_semana: ${diaNumero} (verificando mapeo...)`);
+          console.log(`   getDiaSemanaNumber("${dia.diaSemana}") = ${diaNumero}`);
+          if (diaNumero === 1 && dia.diaSemana !== 'Lunes') {
+            console.error(`   ⚠️ ERROR: Se está mapeando "${dia.diaSemana}" a 1 (Lunes) incorrectamente!`);
+          }
+          return dia.turnos.map(turno => ({
             alumno_id: user.usuario.usuario_id,
-            dia_semana: getDiaSemanaNumber(dia.diaSemana),
+            dia_semana: diaNumero,
             turno: turno
-          }))
-        );
+          }));
+        });
 
       // ELIMINAR DUPLICADOS antes de enviar
       const disponibilidadSinDuplicados = disponibilidadToInsert.filter((item, index, self) => 
@@ -264,10 +306,16 @@ export default function DisponibilidadScreen() {
 
       // SOLUCIÓN ROBUSTA: Usar función almacenada que hace todo en una transacción
       // Preparar datos en formato JSON para la función
-      const disponibilidadJSON = disponibilidadSinDuplicados.map(item => ({
-        dia_semana: item.dia_semana,
-        turno: item.turno
-      }));
+      // Asegurarse de que el valor 0 se serialice correctamente
+      const disponibilidadJSON = disponibilidadSinDuplicados.map(item => {
+        console.log(`📦 Serializando: dia_semana=${item.dia_semana} (tipo: ${typeof item.dia_semana}), turno=${item.turno}`);
+        return {
+          dia_semana: Number(item.dia_semana), // Asegurar que sea número
+          turno: item.turno
+        };
+      });
+      
+      console.log('📋 JSON final a enviar:', JSON.stringify(disponibilidadJSON, null, 2));
 
       console.log('🔄 Llamando función almacenada para actualizar disponibilidad...');
       console.log('📊 Datos a procesar:', JSON.stringify(disponibilidadJSON, null, 2));

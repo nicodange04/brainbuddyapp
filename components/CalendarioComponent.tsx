@@ -3,13 +3,12 @@ import {
     DiaCalendario,
     ExamenCalendario,
     extraerTurno,
-    getActividadesSemana,
     getDiasCalendario,
     obtenerColorDot,
     SesionCalendario
 } from '@/services/calendar';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 
 interface CalendarioProps {
@@ -20,15 +19,8 @@ export default function CalendarioComponent({ onDiaSeleccionado }: CalendarioPro
   const { user } = useAuth();
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('');
   const [diasCalendario, setDiasCalendario] = useState<DiaCalendario[]>([]);
-  const [actividadesSemana, setActividadesSemana] = useState<DiaCalendario[]>([]);
+  const [actividadesProximas2Semanas, setActividadesProximas2Semanas] = useState<DiaCalendario[]>([]);
   const [loading, setLoading] = useState(false);
-
-  // Función para extraer turno de exámenes (fecha DATE)
-  const extraerTurnoExamen = (fecha: string): string => {
-    // Para exámenes, asumimos que son por la mañana por defecto
-    // En el futuro se podría agregar un campo turno específico
-    return 'Mañana';
-  };
 
   // Obtener fechas del mes actual
   const hoy = new Date();
@@ -37,13 +29,6 @@ export default function CalendarioComponent({ onDiaSeleccionado }: CalendarioPro
   
   const fechaInicio = primerDiaMes.toISOString().split('T')[0];
   const fechaFin = ultimoDiaMes.toISOString().split('T')[0];
-  
-  // Obtener fecha de inicio de la semana actual (lunes)
-  const primerDiaSemana = new Date(hoy);
-  const diaSemana = hoy.getDay(); // 0 = Domingo, 1 = Lunes, etc.
-  const diasHastaLunes = diaSemana === 0 ? 6 : diaSemana - 1; // Si es domingo, retroceder 6 días
-  primerDiaSemana.setDate(hoy.getDate() - diasHastaLunes);
-  const fechaInicioSemana = primerDiaSemana.toISOString().split('T')[0];
 
   // Cargar datos del calendario
   useEffect(() => {
@@ -60,32 +45,22 @@ export default function CalendarioComponent({ onDiaSeleccionado }: CalendarioPro
 
     setLoading(true);
     try {
+      // Fecha de inicio para las próximas 2 semanas (desde hoy)
+      const fechaInicioProximas2Semanas = hoy.toISOString().split('T')[0];
+      const fechaFinProximas2Semanas = new Date(hoy);
+      fechaFinProximas2Semanas.setDate(fechaFinProximas2Semanas.getDate() + 13); // 2 semanas = 14 días
+      
       const [dias, actividades] = await Promise.all([
         getDiasCalendario(user.usuario.usuario_id, fechaInicio, fechaFin),
-        getActividadesSemana(user.usuario.usuario_id, fechaInicioSemana)
+        getDiasCalendario(user.usuario.usuario_id, fechaInicioProximas2Semanas, fechaFinProximas2Semanas.toISOString().split('T')[0])
       ]);
 
       console.log('📊 Días del calendario:', dias.length);
-      console.log('📋 Actividades de la semana:', actividades.length);
       console.log('🗓️ Días con actividades:', dias);
-      console.log('🔍 Primer día con actividades:', dias[0]);
-      console.log('🔍 Sesiones del primer día:', dias[0]?.sesiones);
-      
-      // Debug específico para actividades de la semana
-      console.log('🔍 DEBUG ACTIVIDADES SEMANA:');
-      console.log('📅 Fecha inicio semana:', fechaInicioSemana);
-      console.log('📊 Actividades encontradas:', actividades);
-      actividades.forEach((actividad, index) => {
-        console.log(`📋 Actividad ${index}:`, {
-          fecha: actividad.fecha,
-          sesiones: actividad.sesiones.length,
-          examenes: actividad.examenes.length,
-          tieneActividades: actividad.tieneActividades
-        });
-      });
+      console.log('📅 Actividades próximas 2 semanas:', actividades.length);
 
       setDiasCalendario(dias);
-      setActividadesSemana(actividades);
+      setActividadesProximas2Semanas(actividades);
     } catch (error) {
       console.error('Error al cargar datos del calendario:', error);
       Alert.alert('Error', 'No se pudieron cargar los datos del calendario');
@@ -148,12 +123,21 @@ export default function CalendarioComponent({ onDiaSeleccionado }: CalendarioPro
     }
   };
 
-  const renderSesion = (sesion: SesionCalendario) => {
+  const renderSesion = (sesion: SesionCalendario, fecha?: string) => {
     const turno = extraerTurno(sesion.observacion);
-    const color = obtenerColorDot(sesion.estado);
+    const fechaSesion = fecha || sesion.fecha.split('T')[0];
     
     return (
-      <View key={sesion.sesion_id} style={[styles.sesionCard, { borderLeftColor: color }]}>
+      <View key={sesion.sesion_id} style={[styles.sesionCard, { borderLeftColor: '#A78BFA' }]}>
+        <View style={styles.sesionHeader}>
+          <Text style={styles.sesionFecha}>
+            {new Date(fechaSesion).toLocaleDateString('es-ES', { 
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short'
+            })}
+          </Text>
+        </View>
         <Text style={styles.sesionTema}>{sesion.tema}</Text>
         <Text style={styles.sesionTurno}>🕐 {turno}</Text>
         <Text style={styles.sesionEstado}>
@@ -163,9 +147,20 @@ export default function CalendarioComponent({ onDiaSeleccionado }: CalendarioPro
     );
   };
 
-  const renderExamen = (examen: ExamenCalendario) => {
+  const renderExamen = (examen: ExamenCalendario, fecha?: string) => {
+    const fechaExamen = fecha || examen.fecha;
+    
     return (
-      <View key={examen.examen_id} style={[styles.examenCard, { borderLeftColor: '#EF4444' }]}>
+      <View key={examen.examen_id} style={[styles.examenCard, { borderLeftColor: '#7C3AED' }]}>
+        <View style={styles.examenHeader}>
+          <Text style={styles.examenFecha}>
+            {new Date(fechaExamen).toLocaleDateString('es-ES', { 
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short'
+            })}
+          </Text>
+        </View>
         <Text style={styles.examenNombre}>📝 {examen.nombre}</Text>
         <Text style={styles.examenMateria}>{examen.materia}</Text>
         <Text style={styles.examenSesiones}>
@@ -175,97 +170,6 @@ export default function CalendarioComponent({ onDiaSeleccionado }: CalendarioPro
     );
   };
 
-  const renderResumenSemana = () => {
-    console.log('🔍 Renderizando resumen semanal...');
-    console.log('📊 Actividades de la semana:', actividadesSemana.length);
-    console.log('📋 Datos completos:', actividadesSemana);
-    
-    if (actividadesSemana.length === 0) {
-      console.log('⚠️ No hay actividades esta semana');
-      return (
-        <View style={styles.sinActividades}>
-          <Text style={styles.sinActividadesText}>
-            📅 No hay actividades esta semana
-          </Text>
-          <Text style={styles.sinActividadesSubtext}>
-            Crea un examen o configura tu disponibilidad para ver actividades
-          </Text>
-        </View>
-      );
-    }
-
-    return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.resumenScroll}>
-        {actividadesSemana.map(dia => {
-          const tieneExamenes = dia.examenes.length > 0;
-          const tieneSesiones = dia.sesiones.length > 0;
-          
-          console.log(`📅 Procesando día ${dia.fecha}:`, {
-            tieneExamenes,
-            tieneSesiones,
-            examenes: dia.examenes.length,
-            sesiones: dia.sesiones.length
-          });
-          
-          if (!tieneExamenes && !tieneSesiones) {
-            console.log(`⚠️ Día ${dia.fecha} sin actividades, saltando`);
-            return null;
-          }
-
-          return (
-            <View key={dia.fecha} style={styles.diaSemana}>
-              <Text style={styles.diaNombre}>
-                {new Date(dia.fecha).toLocaleDateString('es-ES', { 
-                  weekday: 'short',
-                  day: 'numeric'
-                }).toUpperCase()}
-              </Text>
-              
-              {/* Día con exámenes - Diseño especial */}
-              {tieneExamenes ? (
-                <View style={styles.diaConExamen}>
-                  <View style={styles.examenHeader}>
-                    <Text style={styles.examenIcon}>📝</Text>
-                    <Text style={styles.examenLabel}>EXAMEN</Text>
-                  </View>
-                  {dia.examenes.map(examen => (
-                    <View key={examen.examen_id} style={styles.examenResumen}>
-                      <Text style={styles.examenNombreResumen}>{examen.nombre}</Text>
-                      <Text style={styles.examenMateriaResumen}>{examen.materia}</Text>
-                      <Text style={styles.examenHorario}>
-                        {extraerTurnoExamen(examen.fecha)} · {new Date(examen.fecha).toLocaleTimeString('es-ES', { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                /* Día con sesiones normales */
-                <View style={styles.diaConSesiones}>
-                  {dia.sesiones.map(sesion => {
-                    const turno = extraerTurno(sesion.observacion);
-                    const iconoTurno = turno === 'Mañana' ? '🌅' : turno === 'Tarde' ? '🌆' : '🌙';
-                    
-                    return (
-                      <View key={sesion.sesion_id} style={styles.sesionResumen}>
-                        <Text style={styles.sesionIcon}>{iconoTurno}</Text>
-                        <View style={styles.sesionInfo}>
-                          <Text style={styles.sesionTemaResumen}>{sesion.tema}</Text>
-                          <Text style={styles.sesionTurnoResumen}>{turno}</Text>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
-          );
-        })}
-      </ScrollView>
-    );
-  };
 
   return (
     <View style={styles.container}>
@@ -296,41 +200,53 @@ export default function CalendarioComponent({ onDiaSeleccionado }: CalendarioPro
         }}
       />
 
-      {/* Resumen Semanal */}
-      <View style={styles.resumenSemanal}>
-        <Text style={styles.resumenTitulo}>📅 Resumen de la Semana</Text>
-        {renderResumenSemana()}
+      {/* Actividades Próximas - Siempre visible */}
+      <View style={styles.actividadesDia}>
+        <Text style={styles.actividadesTitulo}>
+          📋 Próximas Actividades
+        </Text>
+        <Text style={styles.actividadesSubtitle}>
+          Exámenes y sesiones de estudio de las próximas 2 semanas
+        </Text>
+        
+        {actividadesProximas2Semanas.length === 0 ? (
+          <View style={styles.sinActividades}>
+            <Text style={styles.sinActividadesText}>
+              No hay actividades programadas en las próximas 2 semanas
+            </Text>
+            <Text style={styles.sinActividadesSubtext}>
+              Crea un examen o configura tu disponibilidad para ver actividades
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.actividadesContainer}>
+            {actividadesProximas2Semanas
+              .filter(dia => dia.tieneActividades)
+              .flatMap(dia => [
+                ...dia.sesiones.map(sesion => ({ ...sesion, fechaDia: dia.fecha, tipo: 'sesion' as const })),
+                ...dia.examenes.map(examen => ({ ...examen, fechaDia: dia.fecha, tipo: 'examen' as const }))
+              ])
+              .sort((a, b) => {
+                // Ordenar por fecha
+                const fechaA = new Date(a.fechaDia).getTime();
+                const fechaB = new Date(b.fechaDia).getTime();
+                if (fechaA !== fechaB) return fechaA - fechaB;
+                
+                // Si es el mismo día, exámenes primero, luego sesiones
+                if (a.tipo === 'examen' && b.tipo === 'sesion') return -1;
+                if (a.tipo === 'sesion' && b.tipo === 'examen') return 1;
+                return 0;
+              })
+              .map((item, index) => {
+                if (item.tipo === 'sesion') {
+                  return renderSesion(item as SesionCalendario & { fechaDia: string }, item.fechaDia);
+                } else {
+                  return renderExamen(item as ExamenCalendario & { fechaDia: string }, item.fechaDia);
+                }
+              })}
+          </View>
+        )}
       </View>
-
-      {/* Actividades del Día Seleccionado */}
-      {fechaSeleccionada && (
-        <View style={styles.actividadesDia}>
-          <Text style={styles.actividadesTitulo}>
-            📋 Actividades del {new Date(fechaSeleccionada).toLocaleDateString('es-ES')}
-          </Text>
-          
-          {(() => {
-            const diaSeleccionado = diasCalendario.find(dia => dia.fecha === fechaSeleccionada);
-            
-            if (!diaSeleccionado || !diaSeleccionado.tieneActividades) {
-              return (
-                <View style={styles.sinActividades}>
-                  <Text style={styles.sinActividadesText}>
-                    No hay actividades programadas para este día
-                  </Text>
-                </View>
-              );
-            }
-
-            return (
-              <ScrollView style={styles.actividadesScroll}>
-                {diaSeleccionado.sesiones.map(renderSesion)}
-                {diaSeleccionado.examenes.map(renderExamen)}
-              </ScrollView>
-            );
-          })()}
-        </View>
-      )}
     </View>
   );
 }
@@ -339,122 +255,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
-  },
-  resumenSemanal: {
-    backgroundColor: 'white',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  resumenTitulo: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  diaSemana: {
-    marginRight: 16,
-    alignItems: 'center',
-    minWidth: 120,
-  },
-  diaNombre: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#374151',
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
-  resumenScroll: {
-    paddingHorizontal: 4,
-  },
-  // Estilos para días con exámenes
-  diaConExamen: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 2,
-    borderColor: '#EF4444',
-    borderRadius: 8,
-    padding: 12,
-    minWidth: 110,
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  examenHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    justifyContent: 'center',
-  },
-  examenIcon: {
-    fontSize: 16,
-    marginRight: 4,
-  },
-  examenLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#DC2626',
-    letterSpacing: 0.5,
-  },
-  examenResumen: {
-    alignItems: 'center',
-  },
-  examenNombreResumen: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 2,
-  },
-  examenMateriaResumen: {
-    fontSize: 10,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  examenHorario: {
-    fontSize: 9,
-    color: '#DC2626',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  // Estilos para días con sesiones normales
-  diaConSesiones: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 8,
-    padding: 8,
-    minWidth: 110,
-  },
-  sesionResumen: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-    paddingVertical: 4,
-  },
-  sesionIcon: {
-    fontSize: 14,
-    marginRight: 6,
-  },
-  sesionInfo: {
-    flex: 1,
-  },
-  sesionTemaResumen: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 1,
-  },
-  sesionTurnoResumen: {
-    fontSize: 9,
-    color: '#6B7280',
   },
   actividadesDia: {
     backgroundColor: 'white',
@@ -471,10 +271,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#1F2937',
+    marginBottom: 4,
+  },
+  actividadesSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
     marginBottom: 12,
   },
-  actividadesScroll: {
-    maxHeight: 300,
+  actividadesContainer: {
+    paddingBottom: 8,
   },
   sesionCard: {
     backgroundColor: 'white',
@@ -487,6 +292,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 1,
+  },
+  sesionHeader: {
+    marginBottom: 8,
+  },
+  sesionFecha: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#A78BFA',
+    textTransform: 'capitalize',
   },
   sesionTema: {
     fontSize: 16,
@@ -514,6 +328,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 1,
+  },
+  examenHeader: {
+    marginBottom: 8,
+  },
+  examenFecha: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#7C3AED',
+    textTransform: 'capitalize',
   },
   examenNombre: {
     fontSize: 16,
