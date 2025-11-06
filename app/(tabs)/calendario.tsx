@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { distribuirSesionesParaTodosExamenes } from '@/services/sessionDistribution';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CalendarioScreen() {
@@ -49,51 +49,57 @@ export default function CalendarioScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header con acciones */}
-      <ThemedView style={styles.header}>
-        <ThemedText type="title">📅 CALENDARIO DE ESTUDIO</ThemedText>
-        <ThemedText type="defaultSemiBold">
-          Visualiza tus sesiones de estudio y exámenes
-        </ThemedText>
-      </ThemedView>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header con acciones */}
+        <ThemedView style={styles.header}>
+          <ThemedText type="title">📅 CALENDARIO DE ESTUDIO</ThemedText>
+          <ThemedText type="defaultSemiBold">
+            Visualiza tus sesiones de estudio y exámenes
+          </ThemedText>
+        </ThemedView>
 
-      {/* Botones de acción */}
-      <ThemedView style={styles.actionsContainer}>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => router.push('/disponibilidad')}
-        >
-          <Text style={styles.actionButtonText}>
-            ⏰ Configurar Disponibilidad
-          </Text>
-        </TouchableOpacity>
+        {/* Botones de acción */}
+        <ThemedView style={styles.actionsContainer}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/disponibilidad')}
+          >
+            <Text style={styles.actionButtonText}>
+              ⏰ Configurar Disponibilidad
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => router.push('/crear-examen')}
-        >
-          <Text style={styles.actionButtonText}>
-            📝 Agregar Examen
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/crear-examen')}
+          >
+            <Text style={styles.actionButtonText}>
+              📝 Agregar Examen
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.algorithmButton]}
-          onPress={handleDistribuirSesiones}
-          disabled={isDistribuyendo}
-        >
-          <Text style={styles.actionButtonText}>
-            {isDistribuyendo ? '🔄 Distribuyendo...' : '🧠 Generar Sesiones'}
-          </Text>
-        </TouchableOpacity>
-      </ThemedView>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.algorithmButton]}
+            onPress={handleDistribuirSesiones}
+            disabled={isDistribuyendo}
+          >
+            <Text style={styles.actionButtonText}>
+              {isDistribuyendo ? '🔄 Distribuyendo...' : '🧠 Generar Sesiones'}
+            </Text>
+          </TouchableOpacity>
+        </ThemedView>
 
-      {/* Componente de calendario */}
-      <CalendarioComponent 
-        onDiaSeleccionado={(dia) => {
-          console.log('Día seleccionado:', dia);
-        }}
-      />
+        {/* Componente de calendario */}
+        <CalendarioComponent 
+          onDiaSeleccionado={(dia) => {
+            console.log('Día seleccionado:', dia);
+          }}
+        />
+      </ScrollView>
     </View>
   );
 }
@@ -102,6 +108,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   header: {
     backgroundColor: 'white',
