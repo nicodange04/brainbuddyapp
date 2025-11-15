@@ -93,48 +93,48 @@ export async function getEstadisticasUsuario(usuarioId: string): Promise<Estadis
  */
 export async function getTrofeosUsuario(usuarioId: string): Promise<Trofeo[]> {
   // TODO: Implementar cuando exista la tabla de trofeos
-  // Por ahora retornamos datos mock
+  // Por ahora retornamos datos mock con iconos válidos de Ionicons
   return [
     {
       trofeo_id: '1',
       nombre: 'Primera Sesión',
       descripcion: 'Completa tu primera sesión de estudio',
-      icono: '🏆',
+      icono: 'trophy',
       obtenido: true,
     },
     {
       trofeo_id: '2',
       nombre: 'Estudiante Dedicado',
       descripcion: 'Completa 10 sesiones',
-      icono: '⭐',
+      icono: 'star',
       obtenido: true,
     },
     {
       trofeo_id: '3',
       nombre: 'Racha de Fuego',
       descripcion: 'Mantén una racha de 7 días',
-      icono: '🔥',
+      icono: 'flame-outline',
       obtenido: true,
     },
     {
       trofeo_id: '4',
       nombre: 'Maestro',
       descripcion: 'Completa 50 sesiones',
-      icono: '👑',
+      icono: 'school',
       obtenido: false,
     },
     {
       trofeo_id: '5',
       nombre: 'Perfeccionista',
       descripcion: 'Obtén 100% en 5 quizzes',
-      icono: '💎',
+      icono: 'diamond-outline',
       obtenido: false,
     },
     {
       trofeo_id: '6',
       nombre: 'Leyenda',
       descripcion: 'Completa 100 sesiones',
-      icono: '🌟',
+      icono: 'star-outline',
       obtenido: false,
     },
   ];

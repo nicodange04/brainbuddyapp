@@ -100,7 +100,7 @@ export async function getSesionEstudioCompleta(sesionId: string): Promise<Sesion
 }
 
 /**
- * Marca una sesión como completada
+ * Marca una sesión como completada y guarda el puntaje
  */
 export async function marcarSesionCompletada(
   sesionId: string,
@@ -108,10 +108,15 @@ export async function marcarSesionCompletada(
   vidasRestantes: number
 ): Promise<boolean> {
   try {
+    // Calcular tiempo de estudio estimado (45 minutos por sesión)
+    const tiempoEstudio = 45; // minutos
+
     const { error } = await supabase
       .from('sesionestudio')
       .update({
         estado: 'Completada',
+        puntaje_obtenido: puntaje,
+        tiempo_estudio: tiempoEstudio,
         updated_at: new Date().toISOString(),
       })
       .eq('sesion_id', sesionId);
@@ -120,9 +125,6 @@ export async function marcarSesionCompletada(
       console.error('Error al marcar sesión como completada:', error);
       return false;
     }
-
-    // TODO: Guardar resultados del quiz en una tabla de resultados si existe
-    // Por ahora solo marcamos la sesión como completada
 
     return true;
   } catch (error) {
