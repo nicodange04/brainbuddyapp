@@ -83,7 +83,9 @@ Responde ÚNICAMENTE con el JSON en este formato:
       return JSON.parse(contenidoLimpio) as ContenidoTeorico;
     } catch (parseError) {
       console.error('❌ Error al parsear JSON del contenido teórico:', parseError);
-      console.error('📄 Contenido recibido:', contenido);
+      console.error('📄 Contenido original:', contenido);
+      console.error('📄 Contenido limpio:', contenidoLimpio);
+      console.error('📄 Primeros 200 caracteres del contenido limpio:', contenidoLimpio.substring(0, 200));
       throw new Error(`Error al parsear JSON: ${parseError instanceof Error ? parseError.message : 'Error desconocido'}`);
     }
   } catch (error) {
@@ -150,7 +152,9 @@ Responde ÚNICAMENTE con el JSON en este formato:
       return JSON.parse(quizLimpio) as QuizCompleto;
     } catch (parseError) {
       console.error('❌ Error al parsear JSON del quiz:', parseError);
-      console.error('📄 Quiz recibido:', quiz);
+      console.error('📄 Quiz original:', quiz);
+      console.error('📄 Quiz limpio:', quizLimpio);
+      console.error('📄 Primeros 200 caracteres del quiz limpio:', quizLimpio.substring(0, 200));
       throw new Error(`Error al parsear JSON: ${parseError instanceof Error ? parseError.message : 'Error desconocido'}`);
     }
   } catch (error) {
@@ -160,18 +164,39 @@ Responde ÚNICAMENTE con el JSON en este formato:
 }
 
 /**
- * Limpia el JSON removiendo markdown code blocks si existen
- * OpenAI a veces devuelve el JSON dentro de ```json ... ```
+ * Limpia el JSON removiendo markdown code blocks y texto adicional
+ * OpenAI a veces devuelve el JSON dentro de ```json ... ``` o con texto antes/después
  */
 function limpiarJSON(texto: string): string {
-  // Remover markdown code blocks (```json ... ``` o ``` ... ```)
   let limpio = texto.trim();
   
-  // Si empieza con ```json o ```, removerlo
+  // Paso 1: Remover markdown code blocks (```json ... ``` o ``` ... ```)
   if (limpio.startsWith('```json')) {
     limpio = limpio.replace(/^```json\s*/i, '').replace(/\s*```$/g, '');
   } else if (limpio.startsWith('```')) {
     limpio = limpio.replace(/^```\s*/i, '').replace(/\s*```$/g, '');
+  }
+  
+  // Paso 2: Buscar el primer { y último } para extraer solo el JSON
+  // Esto maneja casos donde hay texto antes o después del JSON
+  const primerCorchete = limpio.indexOf('{');
+  const ultimoCorchete = limpio.lastIndexOf('}');
+  
+  if (primerCorchete !== -1 && ultimoCorchete !== -1 && ultimoCorchete > primerCorchete) {
+    // Extraer solo la parte del JSON
+    limpio = limpio.substring(primerCorchete, ultimoCorchete + 1);
+  }
+  
+  // Paso 3: Limpiar espacios y saltos de línea al inicio/final
+  limpio = limpio.trim();
+  
+  // Paso 4: Verificar que empiece con { y termine con }
+  if (!limpio.startsWith('{') || !limpio.endsWith('}')) {
+    // Si no empieza/termina correctamente, intentar encontrar el JSON completo
+    const match = limpio.match(/\{[\s\S]*\}/);
+    if (match) {
+      limpio = match[0];
+    }
   }
   
   return limpio.trim();
