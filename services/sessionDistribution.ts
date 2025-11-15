@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { generarMaterialEnBackground } from './materialGeneration';
 
 export interface Disponibilidad {
   id: string;
@@ -207,6 +208,7 @@ async function crearSesionesEstudio(
       // - fecha: requerido (TIMESTAMP)
       // - observacion: opcional (texto para guardar el turno)
       // - estado: requerido
+      // - material_estado: opcional (para trackear generación de material)
       // - mini_quiz_id: opcional (no lo incluimos)
       // - created_at/updated_at: se generan automáticamente
       return {
@@ -215,7 +217,8 @@ async function crearSesionesEstudio(
         tema: sesion.tema,
         fecha: fechaCompleta, // TIMESTAMP con fecha y hora completa
         observacion: `Turno: ${sesion.turno}`, // El turno se guarda en observacion como texto
-        estado: 'NoCompletada' as const
+        estado: 'NoCompletada' as const,
+        material_estado: 'pendiente' as const // Inicializar estado de material como pendiente
       };
     });
 
@@ -317,6 +320,27 @@ export async function distribuirSesionesParaExamen(
 
     // 6. Actualizar total de sesiones en el examen
     await actualizarTotalSesiones(examenId, sesionesCreadas);
+
+    // 7. Iniciar generación de material en background (NO bloquea el flujo principal)
+    // Obtener las sesiones creadas para generar material
+    const { data: sesionesData } = await supabase
+      .from('sesionestudio')
+      .select('sesion_id, tema')
+      .eq('examen_id', examenId);
+
+    if (sesionesData && sesionesData.length > 0) {
+      console.log(`🚀 Iniciando generación de material en background para ${sesionesData.length} sesión(es)...`);
+      
+      // Iniciar generación en background (no esperar)
+      generarMaterialEnBackground(
+        sesionesData.map(s => ({ sesion_id: s.sesion_id, tema: s.tema })),
+        examen.materia,
+        examenId
+      ).catch((error) => {
+        console.error('❌ Error al iniciar generación en background:', error);
+        // No afecta el flujo principal, solo logueamos el error
+      });
+    }
 
     return {
       examen_id: examenId,

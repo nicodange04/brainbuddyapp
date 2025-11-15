@@ -7,7 +7,7 @@ import {
     obtenerColorDot,
     SesionCalendario
 } from '@/services/calendar';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
@@ -20,6 +20,7 @@ interface CalendarioProps {
 }
 
 export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, showOnlyCalendar, showOnlyActivities }: CalendarioProps) {
+  const router = useRouter();
   const { user } = useAuth();
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('');
   const [diasCalendario, setDiasCalendario] = useState<DiaCalendario[]>([]);
@@ -141,9 +142,24 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
   const renderSesion = (sesion: SesionCalendario, fecha?: string) => {
     const turno = extraerTurno(sesion.observacion);
     const fechaSesion = fecha || sesion.fecha.split('T')[0];
+    const puedeIniciar = sesion.estado === 'NoCompletada';
     
     return (
-      <View key={sesion.sesion_id} style={[styles.sesionCard, { borderLeftColor: '#A78BFA' }]}>
+      <TouchableOpacity
+        key={sesion.sesion_id}
+        style={[styles.sesionCard, { borderLeftColor: '#A78BFA' }]}
+        onPress={() => {
+          if (puedeIniciar) {
+            router.push({
+              pathname: '/sesion-estudio',
+              params: { sesionId: sesion.sesion_id }
+            });
+          } else {
+            Alert.alert('Sesión completada', 'Esta sesión ya fue completada.');
+          }
+        }}
+        disabled={!puedeIniciar}
+      >
         <View style={styles.sesionHeader}>
           <Text style={styles.sesionFecha}>
             {new Date(fechaSesion).toLocaleDateString('es-ES', { 
@@ -158,7 +174,10 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
         <Text style={styles.sesionEstado}>
           {sesion.estado === 'Completada' ? '✅' : '⏳'} {sesion.estado}
         </Text>
-      </View>
+        {puedeIniciar && (
+          <Text style={styles.sesionActionHint}>Toca para comenzar →</Text>
+        )}
+      </TouchableOpacity>
     );
   };
 
@@ -514,6 +533,13 @@ const styles = StyleSheet.create({
     fontSize: 12, // sm font size
     fontWeight: '500', // medium
     color: '#6B7280', // neutral.mediumGray
+  },
+  sesionActionHint: {
+    fontSize: 12, // sm font size
+    fontWeight: '600', // semibold
+    color: '#8B5CF6', // primary.violet
+    marginTop: 8,
+    textAlign: 'right',
   },
   examenWrapper: {
     marginBottom: 12, // md spacing

@@ -23,6 +23,7 @@ export default function RootLayout() {
             <Stack.Screen name="register" options={{ headerShown: false }} />
             <Stack.Screen name="disponibilidad" options={{ headerShown: false }} />
             <Stack.Screen name="crear-examen" options={{ headerShown: false }} />
+            <Stack.Screen name="sesion-estudio" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>

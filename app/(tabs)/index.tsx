@@ -134,8 +134,10 @@ export default function HomeScreen() {
             <TouchableOpacity 
               style={styles.primaryButton}
               onPress={() => {
-                // TODO: Navegar a la sesión cuando esté implementada
-                console.log('Iniciar sesión:', proximaSesion.sesion_id);
+                router.push({
+                  pathname: '/sesion-estudio',
+                  params: { sesionId: proximaSesion.sesion_id }
+                });
               }}
             >
               <Text style={styles.primaryButtonText}>Comenzar sesión</Text>

@@ -1,8 +1,15 @@
 import OpenAI from 'openai';
 
+// Validar que la API key esté configurada
+const API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
+
+if (!API_KEY || API_KEY === 'your_openai_api_key_here' || API_KEY.trim() === '') {
+  console.warn('⚠️ EXPO_PUBLIC_OPENAI_API_KEY no está configurada o es inválida');
+}
+
 // Configuración de OpenAI
 const openai = new OpenAI({
-  apiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
+  apiKey: API_KEY,
 });
 
 // Tipos para el contenido generado
@@ -69,7 +76,16 @@ Responde ÚNICAMENTE con el JSON en este formato:
       throw new Error('No se pudo generar contenido');
     }
 
-    return JSON.parse(contenido) as ContenidoTeorico;
+    // Limpiar el contenido: remover markdown code blocks si existen
+    const contenidoLimpio = limpiarJSON(contenido);
+    
+    try {
+      return JSON.parse(contenidoLimpio) as ContenidoTeorico;
+    } catch (parseError) {
+      console.error('❌ Error al parsear JSON del contenido teórico:', parseError);
+      console.error('📄 Contenido recibido:', contenido);
+      throw new Error(`Error al parsear JSON: ${parseError instanceof Error ? parseError.message : 'Error desconocido'}`);
+    }
   } catch (error) {
     console.error('Error generando contenido teórico:', error);
     throw error;
@@ -127,11 +143,38 @@ Responde ÚNICAMENTE con el JSON en este formato:
       throw new Error('No se pudo generar quiz');
     }
 
-    return JSON.parse(quiz) as QuizCompleto;
+    // Limpiar el contenido: remover markdown code blocks si existen
+    const quizLimpio = limpiarJSON(quiz);
+    
+    try {
+      return JSON.parse(quizLimpio) as QuizCompleto;
+    } catch (parseError) {
+      console.error('❌ Error al parsear JSON del quiz:', parseError);
+      console.error('📄 Quiz recibido:', quiz);
+      throw new Error(`Error al parsear JSON: ${parseError instanceof Error ? parseError.message : 'Error desconocido'}`);
+    }
   } catch (error) {
     console.error('Error generando quiz:', error);
     throw error;
   }
+}
+
+/**
+ * Limpia el JSON removiendo markdown code blocks si existen
+ * OpenAI a veces devuelve el JSON dentro de ```json ... ```
+ */
+function limpiarJSON(texto: string): string {
+  // Remover markdown code blocks (```json ... ``` o ``` ... ```)
+  let limpio = texto.trim();
+  
+  // Si empieza con ```json o ```, removerlo
+  if (limpio.startsWith('```json')) {
+    limpio = limpio.replace(/^```json\s*/i, '').replace(/\s*```$/g, '');
+  } else if (limpio.startsWith('```')) {
+    limpio = limpio.replace(/^```\s*/i, '').replace(/\s*```$/g, '');
+  }
+  
+  return limpio.trim();
 }
 
 // Función para extraer texto de archivos (placeholder para implementación futura)
@@ -139,6 +182,30 @@ export async function extraerTextoDeArchivo(archivoUrl: string): Promise<string>
   // TODO: Implementar extracción de texto de PDFs/Word
   // Por ahora retorna string vacío
   return '';
+}
+
+/**
+ * Verifica que la API key esté configurada correctamente
+ */
+export function verificarConfiguracionOpenAI(): { valida: boolean; mensaje: string } {
+  if (!API_KEY || API_KEY === 'your_openai_api_key_here' || API_KEY.trim() === '') {
+    return {
+      valida: false,
+      mensaje: 'API key no configurada. Verifica tu archivo .env'
+    };
+  }
+  
+  if (!API_KEY.startsWith('sk-')) {
+    return {
+      valida: false,
+      mensaje: 'API key no tiene el formato correcto (debe empezar con "sk-")'
+    };
+  }
+  
+  return {
+    valida: true,
+    mensaje: 'API key configurada correctamente'
+  };
 }
 
 export { openai };
