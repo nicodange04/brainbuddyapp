@@ -24,6 +24,9 @@ export default function RootLayout() {
             <Stack.Screen name="disponibilidad" options={{ headerShown: false }} />
             <Stack.Screen name="crear-examen" options={{ headerShown: false }} />
             <Stack.Screen name="sesion-estudio" options={{ headerShown: false }} />
+            <Stack.Screen name="editar-perfil" options={{ headerShown: false }} />
+            <Stack.Screen name="cambiar-contrasena" options={{ headerShown: false }} />
+            <Stack.Screen name="notificaciones" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>

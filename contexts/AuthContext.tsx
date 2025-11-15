@@ -9,6 +9,7 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   vincularPadreAlumno: (codigo: string) => Promise<void>;
+  checkAuthState: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -99,6 +100,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     register: handleRegister,
     logout: handleLogout,
     vincularPadreAlumno: handleVincularPadreAlumno,
+    checkAuthState,
   };
 
   return (

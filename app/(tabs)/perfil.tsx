@@ -2,10 +2,11 @@ import { Avatar } from '@/components/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { generarIniciales, seleccionarColorPorNombre } from '@/services/avatar';
 import { EstadisticasPerfil, getEstadisticasUsuario, getTrofeosUsuario, Trofeo } from '@/services/perfil';
+import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PerfilScreen() {
@@ -71,8 +72,11 @@ export default function PerfilScreen() {
   };
 
   const copiarCodigo = async () => {
-    // TODO: Obtener código real del usuario
-    const codigo = 'ABC123'; // Mock por ahora
+    const codigo = user?.alumno?.codigo_vinculacion || '';
+    if (!codigo) {
+      Alert.alert('Error', 'No se pudo obtener el código de vinculación');
+      return;
+    }
     await Clipboard.setStringAsync(codigo);
     Alert.alert('Código copiado', 'El código se ha copiado al portapapeles');
   };
@@ -102,6 +106,15 @@ export default function PerfilScreen() {
   const trofeosObtenidos = trofeos.filter(t => t.obtenido).length;
   const totalTrofeos = trofeos.length;
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color="#8B5CF6" />
+        <Text style={styles.loadingText}>Cargando perfil...</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView 
       style={[styles.container, { paddingTop: insets.top }]}
@@ -121,9 +134,9 @@ export default function PerfilScreen() {
             {rolUsuario === 'alumno' ? '👨‍🎓 Alumno' : '👨‍👩‍👧‍👦 Padre'}
           </Text>
         </View>
-        {user?.alumno && (
+        {user?.alumno?.fecha_nacimiento && (
           <Text style={styles.fechaNacimiento}>
-            📅 {formatearFechaNacimiento()}
+            📅 {formatearFechaNacimiento(user.alumno.fecha_nacimiento)}
           </Text>
         )}
       </View>
@@ -180,8 +193,22 @@ export default function PerfilScreen() {
                   !trofeo.obtenido && styles.trofeoCardBloqueado
                 ]}
               >
-                <Text style={styles.trofeoIcono}>{trofeo.icono}</Text>
-                <Text style={styles.trofeoNombre}>{trofeo.nombre}</Text>
+                <View style={[
+                  styles.trofeoIconContainer,
+                  trofeo.obtenido && styles.trofeoIconContainerObtenido
+                ]}>
+                  <Ionicons
+                    name={trofeo.icono as any}
+                    size={32}
+                    color={trofeo.obtenido ? '#FFFFFF' : '#9CA3AF'}
+                  />
+                </View>
+                <Text style={[
+                  styles.trofeoNombre,
+                  !trofeo.obtenido && styles.trofeoNombreBloqueado
+                ]}>
+                  {trofeo.nombre}
+                </Text>
               </View>
             ))}
           </View>
@@ -196,7 +223,9 @@ export default function PerfilScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🔗 CÓDIGO DE VINCULACIÓN</Text>
           <View style={styles.codigoCard}>
-            <Text style={styles.codigoTexto}>ABC123</Text>
+            <Text style={styles.codigoTexto}>
+              {user?.alumno?.codigo_vinculacion || 'N/A'}
+            </Text>
             <Text style={styles.codigoDescripcion}>
               Comparte este código con tus padres para que puedan ver tu progreso
             </Text>
@@ -221,17 +250,26 @@ export default function PerfilScreen() {
       {/* Configuración */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>⚙️ CONFIGURACIÓN</Text>
-        <TouchableOpacity style={styles.configItem}>
+        <TouchableOpacity 
+          style={styles.configItem}
+          onPress={() => router.push('/editar-perfil')}
+        >
           <Text style={styles.configIcon}>✏️</Text>
           <Text style={styles.configText}>Editar perfil</Text>
           <Text style={styles.configArrow}>›</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.configItem}>
+        <TouchableOpacity 
+          style={styles.configItem}
+          onPress={() => router.push('/cambiar-contrasena')}
+        >
           <Text style={styles.configIcon}>🔒</Text>
           <Text style={styles.configText}>Cambiar contraseña</Text>
           <Text style={styles.configArrow}>›</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.configItem}>
+        <TouchableOpacity 
+          style={styles.configItem}
+          onPress={() => router.push('/notificaciones')}
+        >
           <Text style={styles.configIcon}>🔔</Text>
           <Text style={styles.configText}>Notificaciones</Text>
           <Text style={styles.configArrow}>›</Text>
@@ -509,5 +547,31 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 24,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  trofeoIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  trofeoIconContainerObtenido: {
+    backgroundColor: '#8B5CF6',
+  },
+  trofeoNombreBloqueado: {
+    color: '#9CA3AF',
   },
 });
