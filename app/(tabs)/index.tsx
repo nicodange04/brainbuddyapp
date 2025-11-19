@@ -1,22 +1,41 @@
 import { Avatar } from '@/components/avatar';
+import { SelectorHijo } from '@/components/SelectorHijo';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePadre } from '@/contexts/PadreContext';
 import { seleccionarColorPorNombre } from '@/services/avatar';
 import { getProximaSesion, getProximosExamenes, ProximaSesion, ProximoExamen } from '@/services/home';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
+  const { hijoActivo, loading: loadingPadre } = usePadre();
   const [proximaSesion, setProximaSesion] = useState<ProximaSesion | null>(null);
   const [proximosExamenes, setProximosExamenes] = useState<ProximoExamen[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Determinar si es padre o alumno
+  const esPadre = user?.usuario?.rol === 'padre';
+  const alumnoIdParaUsar = esPadre ? hijoActivo?.alumno_id : user?.alumno?.alumno_id;
+
   const cargarDatos = async () => {
-    if (!user?.usuario?.usuario_id || !user?.alumno?.alumno_id) {
+    // Si es padre y no tiene hijo activo, no cargar datos
+    if (esPadre && !hijoActivo) {
+      setLoading(false);
+      return;
+    }
+
+    // Si es alumno y no tiene datos, no cargar
+    if (!esPadre && (!user?.usuario?.usuario_id || !user?.alumno?.alumno_id)) {
+      setLoading(false);
+      return;
+    }
+
+    if (!alumnoIdParaUsar) {
       setLoading(false);
       return;
     }
@@ -24,8 +43,8 @@ export default function HomeScreen() {
     setLoading(true);
     try {
       const [sesion, examenes] = await Promise.all([
-        getProximaSesion(user.alumno.alumno_id),
-        getProximosExamenes(user.alumno.alumno_id),
+        getProximaSesion(alumnoIdParaUsar),
+        getProximosExamenes(alumnoIdParaUsar),
       ]);
 
       setProximaSesion(sesion);
@@ -39,26 +58,32 @@ export default function HomeScreen() {
 
   useEffect(() => {
     cargarDatos();
-  }, [user]);
+  }, [user, hijoActivo]);
 
   useFocusEffect(
     useCallback(() => {
       cargarDatos();
-    }, [user])
+    }, [user, hijoActivo])
   );
 
-  // Obtener nombre del usuario
-  const nombreUsuario = user?.usuario?.nombre || 'Usuario';
-  const apellidoUsuario = user?.usuario?.apellido || '';
-  const nombreCompleto = `${nombreUsuario}${apellidoUsuario ? ` ${apellidoUsuario}` : ''}`;
+  // Obtener nombre del usuario o del hijo
+  const nombreParaMostrar = esPadre 
+    ? (hijoActivo ? `${hijoActivo.nombre} ${hijoActivo.apellido}` : 'Hijo/a')
+    : (user?.usuario?.nombre || 'Usuario');
+  const apellidoParaMostrar = esPadre 
+    ? (hijoActivo?.apellido || '')
+    : (user?.usuario?.apellido || '');
   
-  // Calcular iniciales: si hay apellido, usar primera letra de nombre y apellido
-  // Si no hay apellido, usar las primeras dos letras del nombre
-  const iniciales = apellidoUsuario 
-    ? `${nombreUsuario.charAt(0).toUpperCase()}${apellidoUsuario.charAt(0).toUpperCase()}`
-    : nombreUsuario.substring(0, 2).toUpperCase();
+  // Calcular iniciales
+  const iniciales = esPadre && hijoActivo
+    ? hijoActivo.iniciales
+    : apellidoParaMostrar
+    ? `${nombreParaMostrar.charAt(0).toUpperCase()}${apellidoParaMostrar.charAt(0).toUpperCase()}`
+    : nombreParaMostrar.substring(0, 2).toUpperCase();
   
-  const avatarColor = seleccionarColorPorNombre(nombreUsuario + apellidoUsuario);
+  const avatarColor = esPadre && hijoActivo
+    ? (hijoActivo.avatar_color as any)
+    : seleccionarColorPorNombre(nombreParaMostrar + apellidoParaMostrar);
 
   // Formatear fecha
   const formatearFecha = (fecha: string) => {
@@ -88,6 +113,40 @@ export default function HomeScreen() {
     return 0;
   };
 
+  // Si es padre y está cargando hijos, mostrar loading
+  if (esPadre && loadingPadre) {
+    return (
+      <View style={[styles.container, styles.centerContent, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color="#8B5CF6" />
+        <Text style={styles.loadingText}>Cargando...</Text>
+      </View>
+    );
+  }
+
+  // Si es padre y no tiene hijos vinculados, mostrar mensaje
+  if (esPadre && !hijoActivo) {
+    return (
+      <ScrollView 
+        style={[styles.container, { paddingTop: insets.top }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateIcon}>👨‍👩‍👧‍👦</Text>
+          <Text style={styles.emptyStateTitle}>No hay hijos vinculados</Text>
+          <Text style={styles.emptyStateText}>
+            Para ver el progreso de tu hijo/a, primero debes vincularlo usando su código de vinculación.
+          </Text>
+          <TouchableOpacity 
+            style={styles.primaryButton}
+            onPress={() => router.push('/vincular-hijo')}
+          >
+            <Text style={styles.primaryButtonText}>Vincular hijo/a</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView 
       style={[styles.container, { paddingTop: insets.top }]}
@@ -102,10 +161,25 @@ export default function HomeScreen() {
             size="large"
           />
           <View style={styles.userInfo}>
-            <Text style={styles.greeting}>¡Hola, {nombreUsuario}! 👋</Text>
-            <Text style={styles.subtitle}>Listo para estudiar hoy</Text>
+            {esPadre ? (
+              <>
+                <Text style={styles.greeting}>Progreso de {hijoActivo?.nombre} 👋</Text>
+                <Text style={styles.subtitle}>Vista de seguimiento</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.greeting}>¡Hola, {nombreParaMostrar}! 👋</Text>
+                <Text style={styles.subtitle}>Listo para estudiar hoy</Text>
+              </>
+            )}
           </View>
         </View>
+        {/* Selector de hijo para padres */}
+        {esPadre && hijoActivo && (
+          <View style={styles.selectorContainer}>
+            <SelectorHijo />
+          </View>
+        )}
       </View>
 
       {/* Próxima sesión */}
@@ -131,17 +205,25 @@ export default function HomeScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity 
-              style={styles.primaryButton}
-              onPress={() => {
-                router.push({
-                  pathname: '/sesion-estudio',
-                  params: { sesionId: proximaSesion.sesion_id }
-                });
-              }}
-            >
-              <Text style={styles.primaryButtonText}>Comenzar sesión</Text>
-            </TouchableOpacity>
+            {esPadre ? (
+              <View style={[styles.primaryButton, styles.primaryButtonDisabled]}>
+                <Text style={[styles.primaryButtonText, styles.primaryButtonTextDisabled]}>
+                  Solo visualización
+                </Text>
+              </View>
+            ) : (
+              <TouchableOpacity 
+                style={styles.primaryButton}
+                onPress={() => {
+                  router.push({
+                    pathname: '/sesion-estudio',
+                    params: { sesionId: proximaSesion.sesion_id }
+                  });
+                }}
+              >
+                <Text style={styles.primaryButtonText}>Comenzar sesión</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
@@ -187,14 +269,16 @@ export default function HomeScreen() {
           <Text style={styles.quickActionArrow}>›</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity 
-          style={styles.quickAction}
-          onPress={() => router.push('/crear-examen')}
-        >
-          <Text style={styles.quickActionIcon}>➕</Text>
-          <Text style={styles.quickActionText}>Agregar examen</Text>
-          <Text style={styles.quickActionArrow}>›</Text>
-        </TouchableOpacity>
+        {!esPadre && (
+          <TouchableOpacity 
+            style={styles.quickAction}
+            onPress={() => router.push('/crear-examen')}
+          >
+            <Text style={styles.quickActionIcon}>➕</Text>
+            <Text style={styles.quickActionText}>Agregar examen</Text>
+            <Text style={styles.quickActionArrow}>›</Text>
+          </TouchableOpacity>
+        )}
         
         <TouchableOpacity 
           style={styles.quickAction}
@@ -426,4 +510,52 @@ const styles = StyleSheet.create({
     color: '#8B5CF6', // primary.violet
     fontWeight: '300',
   },
+  selectorContainer: {
+    marginTop: 16,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    flex: 1,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    marginTop: 100,
+  },
+  emptyStateIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  emptyStateTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  primaryButtonDisabled: {
+    backgroundColor: '#E5E7EB',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  primaryButtonTextDisabled: {
+    color: '#9CA3AF',
+  },
 });
+

@@ -9,8 +9,10 @@ import {
   MetricCard,
   TrophyGrid,
 } from '@/components/progreso';
+import { SelectorHijo } from '@/components/SelectorHijo';
 import { DesignColors, DesignSpacing } from '@/constants/design';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePadre } from '@/contexts/PadreContext';
 import {
   getMetricasProgreso,
   getHorasPorDiaSemana,
@@ -28,14 +30,32 @@ import { getTrofeosUsuario, Trofeo } from '@/services/perfil';
 export default function ProgresoScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { hijoActivo } = usePadre();
   const [loading, setLoading] = useState(true);
   const [metricas, setMetricas] = useState<MetricasProgreso | null>(null);
   const [horasPorDia, setHorasPorDia] = useState<HorasPorDia[]>([]);
   const [examenes, setExamenes] = useState<ProgresoExamen[]>([]);
   const [trofeos, setTrofeos] = useState<Trofeo[]>([]);
 
+  // Determinar si es padre o alumno
+  const esPadre = user?.usuario?.rol === 'padre';
+  const alumnoIdParaUsar = esPadre ? hijoActivo?.alumno_id : user?.alumno?.alumno_id;
+  const usuarioIdParaUsar = esPadre ? hijoActivo?.usuario_id : user?.usuario?.usuario_id;
+
   const cargarDatos = useCallback(async () => {
-    if (!user?.alumno?.alumno_id) {
+    // Si es padre y no tiene hijo activo, no cargar
+    if (esPadre && !hijoActivo) {
+      setLoading(false);
+      return;
+    }
+
+    // Si es alumno y no tiene datos, no cargar
+    if (!esPadre && !user?.alumno?.alumno_id) {
+      setLoading(false);
+      return;
+    }
+
+    if (!alumnoIdParaUsar || !usuarioIdParaUsar) {
       setLoading(false);
       return;
     }
@@ -43,10 +63,10 @@ export default function ProgresoScreen() {
     setLoading(true);
     try {
       const [metricasData, horasData, examenesData, trofeosData] = await Promise.all([
-        getMetricasProgreso(user.alumno.alumno_id),
-        getHorasPorDiaSemana(user.alumno.alumno_id),
-        getProgresoExamenes(user.alumno.alumno_id),
-        getTrofeosUsuario(user.usuario.usuario_id),
+        getMetricasProgreso(alumnoIdParaUsar),
+        getHorasPorDiaSemana(alumnoIdParaUsar),
+        getProgresoExamenes(alumnoIdParaUsar),
+        getTrofeosUsuario(usuarioIdParaUsar),
       ]);
 
       setMetricas(metricasData);
@@ -58,7 +78,7 @@ export default function ProgresoScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, hijoActivo, esPadre, alumnoIdParaUsar, usuarioIdParaUsar]);
 
   useEffect(() => {
     cargarDatos();
@@ -108,8 +128,18 @@ export default function ProgresoScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>📊 Progreso</Text>
-          <Text style={styles.headerSubtitle}>Estadísticas y Logros</Text>
+          <Text style={styles.headerTitle}>
+            📊 {esPadre ? 'Progreso del Hijo/a' : 'Progreso'}
+          </Text>
+          <Text style={styles.headerSubtitle}>
+            {esPadre ? 'Estadísticas y logros de tu hijo/a' : 'Estadísticas y Logros'}
+          </Text>
+          {/* Selector de hijo para padres */}
+          {esPadre && hijoActivo && (
+            <View style={styles.selectorContainer}>
+              <SelectorHijo />
+            </View>
+          )}
         </View>
 
         {/* Métricas Principales */}
@@ -238,6 +268,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: DesignColors.neutral.mediumGray,
+  },
+  selectorContainer: {
+    marginTop: 16,
   },
   section: {
     marginBottom: DesignSpacing.xl,

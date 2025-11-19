@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { usePadre } from '@/contexts/PadreContext';
 import {
     DiaCalendario,
     ExamenCalendario,
@@ -22,11 +23,16 @@ interface CalendarioProps {
 export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, showOnlyCalendar, showOnlyActivities }: CalendarioProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const { hijoActivo } = usePadre();
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('');
   const [diasCalendario, setDiasCalendario] = useState<DiaCalendario[]>([]);
   const [actividadesProximas2Semanas, setActividadesProximas2Semanas] = useState<DiaCalendario[]>([]);
   const [loading, setLoading] = useState(false);
   const [examenesExpandidos, setExamenesExpandidos] = useState<Set<string>>(new Set());
+
+  // Determinar qué usuario_id usar: si es padre, usar el del hijo activo
+  const esPadre = user?.usuario?.rol === 'padre';
+  const usuarioIdParaUsar = esPadre ? hijoActivo?.usuario_id : user?.usuario?.usuario_id;
 
   // Obtener fechas del mes actual
   const hoy = new Date();
@@ -37,21 +43,42 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
   const fechaFin = ultimoDiaMes.toISOString().split('T')[0];
 
   const cargarDatosCalendario = async () => {
-    if (!user?.usuario?.usuario_id) return;
+    // Si es padre y no tiene hijo activo, no cargar
+    if (esPadre && !hijoActivo) {
+      setDiasCalendario([]);
+      setActividadesProximas2Semanas([]);
+      return;
+    }
 
-    console.log('🚀 Cargando datos del calendario para usuario:', user.usuario.usuario_id);
+    if (!usuarioIdParaUsar) return;
+
+    console.log('🚀 Cargando datos del calendario para usuario:', usuarioIdParaUsar);
     console.log('📅 Rango de fechas:', { fechaInicio, fechaFin });
 
     setLoading(true);
     try {
+      // Obtener alumno_id del usuario
+      let alumnoId: string | undefined;
+      
+      if (esPadre && hijoActivo) {
+        alumnoId = hijoActivo.alumno_id;
+      } else if (user?.alumno?.alumno_id) {
+        alumnoId = user.alumno.alumno_id;
+      }
+
+      if (!alumnoId) {
+        setLoading(false);
+        return;
+      }
+
       // Fecha de inicio para las próximas 2 semanas (desde hoy)
       const fechaInicioProximas2Semanas = hoy.toISOString().split('T')[0];
       const fechaFinProximas2Semanas = new Date(hoy);
       fechaFinProximas2Semanas.setDate(fechaFinProximas2Semanas.getDate() + 13); // 2 semanas = 14 días
       
       const [dias, actividades] = await Promise.all([
-        getDiasCalendario(user.usuario.usuario_id, fechaInicio, fechaFin),
-        getDiasCalendario(user.usuario.usuario_id, fechaInicioProximas2Semanas, fechaFinProximas2Semanas.toISOString().split('T')[0])
+        getDiasCalendario(alumnoId, fechaInicio, fechaFin),
+        getDiasCalendario(alumnoId, fechaInicioProximas2Semanas, fechaFinProximas2Semanas.toISOString().split('T')[0])
       ]);
 
       console.log('📊 Días del calendario:', dias.length);
@@ -68,21 +95,19 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
     }
   };
 
-  // Cargar datos del calendario cuando cambia el usuario o refreshKey
+  // Cargar datos del calendario cuando cambia el usuario, hijo activo o refreshKey
   useEffect(() => {
-    if (user?.usuario?.usuario_id) {
-      cargarDatosCalendario();
-    }
-  }, [user, refreshKey]); // Agregar refreshKey como dependencia
+    cargarDatosCalendario();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, hijoActivo, refreshKey]);
 
   // Refrescar cuando la pantalla recibe foco (cuando vuelves de otra pantalla)
   useFocusEffect(
     useCallback(() => {
-      if (user?.usuario?.usuario_id) {
-        console.log('🔄 Pantalla enfocada, refrescando calendario...');
-        cargarDatosCalendario();
-      }
-    }, [user?.usuario?.usuario_id])
+      console.log('🔄 Pantalla enfocada, refrescando calendario...');
+      cargarDatosCalendario();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [usuarioIdParaUsar, hijoActivo])
   );
 
   // Crear objeto markedDates para el calendario
@@ -142,23 +167,28 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
   const renderSesion = (sesion: SesionCalendario, fecha?: string) => {
     const turno = extraerTurno(sesion.observacion);
     const fechaSesion = fecha || sesion.fecha.split('T')[0];
-    const puedeIniciar = sesion.estado === 'NoCompletada';
+    const puedeIniciar = sesion.estado === 'NoCompletada' && !esPadre;
+    
+    // Si es padre, usar View en lugar de TouchableOpacity (solo visualización)
+    const SesionWrapper = esPadre ? View : TouchableOpacity;
     
     return (
-      <TouchableOpacity
+      <SesionWrapper
         key={sesion.sesion_id}
-        style={[styles.sesionCard, { borderLeftColor: '#A78BFA' }]}
-        onPress={() => {
-          if (puedeIniciar) {
-            router.push({
-              pathname: '/sesion-estudio',
-              params: { sesionId: sesion.sesion_id }
-            });
-          } else {
-            Alert.alert('Sesión completada', 'Esta sesión ya fue completada.');
-          }
-        }}
-        disabled={!puedeIniciar}
+        style={[styles.sesionCard, { borderLeftColor: '#A78BFA' }, esPadre && styles.sesionCardDisabled]}
+        {...(!esPadre && {
+          onPress: () => {
+            if (puedeIniciar) {
+              router.push({
+                pathname: '/sesion-estudio',
+                params: { sesionId: sesion.sesion_id }
+              });
+            } else {
+              Alert.alert('Sesión completada', 'Esta sesión ya fue completada.');
+            }
+          },
+          disabled: !puedeIniciar,
+        })}
       >
         <View style={styles.sesionHeader}>
           <Text style={styles.sesionFecha}>
@@ -174,10 +204,13 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
         <Text style={styles.sesionEstado}>
           {sesion.estado === 'Completada' ? '✅' : '⏳'} {sesion.estado}
         </Text>
-        {puedeIniciar && (
+        {puedeIniciar && !esPadre && (
           <Text style={styles.sesionActionHint}>Toca para comenzar →</Text>
         )}
-      </TouchableOpacity>
+        {esPadre && (
+          <Text style={styles.sesionActionHint}>Solo visualización</Text>
+        )}
+      </SesionWrapper>
     );
   };
 
@@ -499,6 +532,10 @@ const styles = StyleSheet.create({
     marginBottom: 12, // md spacing
     borderRadius: 16, // xl borderRadius
     borderLeftWidth: 4,
+  },
+  sesionCardDisabled: {
+    opacity: 0.7,
+    backgroundColor: '#F3F4F6', // lightGray para indicar que no es interactivo
     borderLeftColor: '#A78BFA', // violetLight
     shadowColor: '#A78BFA',
     shadowOffset: { width: 0, height: 2 },

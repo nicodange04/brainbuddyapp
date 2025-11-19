@@ -5,6 +5,7 @@ import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/contexts/AuthContext';
+import { PadreProvider } from '@/contexts/PadreContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export const unstable_settings = {
@@ -17,7 +18,8 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <PadreProvider>
+          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack>
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="register" options={{ headerShown: false }} />
@@ -27,11 +29,13 @@ export default function RootLayout() {
             <Stack.Screen name="editar-perfil" options={{ headerShown: false }} />
             <Stack.Screen name="cambiar-contrasena" options={{ headerShown: false }} />
             <Stack.Screen name="notificaciones" options={{ headerShown: false }} />
+            <Stack.Screen name="vincular-hijo" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>
+        </PadreProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

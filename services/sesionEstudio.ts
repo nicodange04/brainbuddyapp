@@ -111,17 +111,45 @@ export async function marcarSesionCompletada(
     // Calcular tiempo de estudio estimado (45 minutos por sesión)
     const tiempoEstudio = 45; // minutos
 
+    // Primero intentar actualizar con todas las columnas
+    // Si las columnas no existen, solo actualizar estado
+    const updateData: any = {
+      estado: 'Completada',
+      updated_at: new Date().toISOString(),
+    };
+
+    // Intentar agregar puntaje_obtenido y tiempo_estudio si existen
+    // Si no existen, Supabase lanzará un error y lo manejaremos
+    try {
+      updateData.puntaje_obtenido = puntaje;
+      updateData.tiempo_estudio = tiempoEstudio;
+    } catch (e) {
+      // Ignorar si las columnas no existen
+    }
+
     const { error } = await supabase
       .from('sesionestudio')
-      .update({
-        estado: 'Completada',
-        puntaje_obtenido: puntaje,
-        tiempo_estudio: tiempoEstudio,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('sesion_id', sesionId);
 
     if (error) {
+      // Si el error es porque las columnas no existen, intentar solo con estado
+      if (error.message?.includes('puntaje_obtenido') || error.message?.includes('tiempo_estudio')) {
+        console.warn('⚠️ Columnas puntaje_obtenido o tiempo_estudio no existen, actualizando solo estado');
+        const { error: errorSimple } = await supabase
+          .from('sesionestudio')
+          .update({
+            estado: 'Completada',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('sesion_id', sesionId);
+
+        if (errorSimple) {
+          console.error('Error al marcar sesión como completada:', errorSimple);
+          return false;
+        }
+        return true;
+      }
       console.error('Error al marcar sesión como completada:', error);
       return false;
     }

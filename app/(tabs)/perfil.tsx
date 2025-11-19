@@ -274,6 +274,16 @@ export default function PerfilScreen() {
           <Text style={styles.configText}>Notificaciones</Text>
           <Text style={styles.configArrow}>›</Text>
         </TouchableOpacity>
+        {user?.padre && (
+          <TouchableOpacity 
+            style={styles.configItem}
+            onPress={() => router.push('/vincular-hijo')}
+          >
+            <Text style={styles.configIcon}>👨‍👩‍👧‍👦</Text>
+            <Text style={styles.configText}>Vincular hijo/a</Text>
+            <Text style={styles.configArrow}>›</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Botón de Logout */}
