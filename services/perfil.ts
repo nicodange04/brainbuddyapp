@@ -91,10 +91,10 @@ export async function getEstadisticasUsuario(usuarioId: string): Promise<Estadis
 
     const examenIds = examenes.map(e => e.examen_id);
 
-    // Obtener sesiones completadas con updated_at para calcular racha
+    // Obtener sesiones completadas con updated_at y tiempo_estudio para calcular racha y horas
     const { data: sesiones, error: sesionesError } = await supabase
       .from('sesionestudio')
-      .select('estado, updated_at')
+      .select('estado, updated_at, tiempo_estudio, puntaje_obtenido')
       .in('examen_id', examenIds);
 
     if (sesionesError) {
@@ -109,9 +109,17 @@ export async function getEstadisticasUsuario(usuarioId: string): Promise<Estadis
     }
 
     const sesionesCompletadas = sesiones?.filter(s => s.estado === 'Completada') || [];
-    // Por ahora puntos y horas son estimados, se pueden calcular mejor cuando tengamos más datos
-    const puntosTotales = sesionesCompletadas.length * 100; // Estimado: 100 puntos por sesión
-    const horasEstudiadas = sesionesCompletadas.length * 0.75; // Estimado: 45 min por sesión
+    
+    // Calcular puntos totales sumando los puntajes reales de las sesiones
+    const puntosTotales = sesionesCompletadas.reduce((sum, s) => {
+      return sum + (s.puntaje_obtenido || 0);
+    }, 0);
+    
+    // Calcular horas estudiadas sumando el tiempo real de las sesiones (tiempo_estudio está en minutos)
+    const minutosTotales = sesionesCompletadas.reduce((sum, s) => {
+      return sum + (s.tiempo_estudio || 0);
+    }, 0);
+    const horasEstudiadas = minutosTotales / 60; // Convertir minutos a horas
 
     // Calcular racha actual
     const rachaActual = calcularRachaActual(sesionesCompletadas);

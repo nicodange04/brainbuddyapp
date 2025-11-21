@@ -4,6 +4,7 @@
 import { usePadre } from '@/contexts/PadreContext';
 import { Avatar } from '@/components/avatar';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Modal,
@@ -39,6 +40,7 @@ interface SelectorHijoProps {
 export function SelectorHijo({ mostrarSoloNombre = false }: SelectorHijoProps) {
   const { hijosVinculados, hijoActivo, cambiarHijoActivo } = usePadre();
   const [modalVisible, setModalVisible] = useState(false);
+  const router = useRouter();
 
   // Si no hay hijos, no mostrar nada
   if (hijosVinculados.length === 0) {
@@ -136,6 +138,36 @@ export function SelectorHijo({ mostrarSoloNombre = false }: SelectorHijoProps) {
                   </TouchableOpacity>
                 );
               })}
+              
+              {/* Botón para agregar nuevo hijo */}
+              <TouchableOpacity
+                style={styles.agregarHijoButton}
+                onPress={() => {
+                  setModalVisible(false);
+                  router.push('/vincular-hijo');
+                }}
+              >
+                <View style={styles.agregarHijoIconContainer}>
+                  <Ionicons
+                    name="add-circle-outline"
+                    size={28}
+                    color={DesignColors.primary.violet}
+                  />
+                </View>
+                <View style={styles.agregarHijoInfo}>
+                  <Text style={styles.agregarHijoTexto}>
+                    Vincular otro hijo/a
+                  </Text>
+                  <Text style={styles.agregarHijoSubtexto}>
+                    Agregar un nuevo hijo usando su código
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={DesignColors.neutral.mediumGray}
+                />
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
@@ -235,6 +267,39 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   hijoOptionCodigo: {
+    fontSize: 12,
+    color: DesignColors.neutral.mediumGray,
+  },
+  agregarHijoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 8,
+    backgroundColor: DesignColors.secondary.white,
+    borderWidth: 2,
+    borderColor: DesignColors.primary.violet,
+    borderStyle: 'dashed',
+    gap: 12,
+  },
+  agregarHijoIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: DesignColors.primary.violetLight + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  agregarHijoInfo: {
+    flex: 1,
+  },
+  agregarHijoTexto: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: DesignColors.primary.violet,
+    marginBottom: 4,
+  },
+  agregarHijoSubtexto: {
     fontSize: 12,
     color: DesignColors.neutral.mediumGray,
   },

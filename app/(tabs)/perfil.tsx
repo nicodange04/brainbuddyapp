@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PerfilScreen() {
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [estadisticas, setEstadisticas] = useState<EstadisticasPerfil | null>(null);
   const [trofeos, setTrofeos] = useState<Trofeo[]>([]);
@@ -72,26 +72,21 @@ export default function PerfilScreen() {
     }, [user])
   );
 
-  const handleLogout = async () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro de que quieres cerrar sesión?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-              router.replace('/login');
-            } catch (error) {
-              Alert.alert('Error', 'No se pudo cerrar la sesión');
-            }
-          },
-        },
-      ]
-    );
+  /**
+   * Formatea las horas de estudio de manera legible
+   */
+  const formatearHoras = (horas: number): string => {
+    if (horas === 0) return '0h';
+    
+    // Si es menos de 1 hora, mostrar en minutos
+    if (horas < 1) {
+      const minutos = Math.round(horas * 60);
+      return `${minutos} min`;
+    }
+    
+    // Si es 1 hora o más, mostrar horas con 1 decimal
+    const horasRedondeadas = Math.round(horas * 10) / 10;
+    return `${horasRedondeadas}h`;
   };
 
   const copiarCodigo = async () => {
@@ -171,6 +166,13 @@ export default function PerfilScreen() {
             📅 {formatearFechaNacimiento(user.alumno.fecha_nacimiento)}
           </Text>
         )}
+        <TouchableOpacity 
+          style={styles.configButtonHeader}
+          onPress={() => router.push('/configuracion')}
+        >
+          <Text style={styles.configButtonHeaderIcon}>⚙️</Text>
+          <Text style={styles.configButtonHeaderText}>Configuración</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Estadísticas Principales */}
@@ -200,7 +202,9 @@ export default function PerfilScreen() {
             </View>
             <View style={[styles.statCard, styles.statCardFull]}>
               <Text style={styles.statIcon}>⏱️</Text>
-              <Text style={styles.statValue}>{estadisticas.horas_estudiadas}h</Text>
+              <Text style={styles.statValue}>
+                {formatearHoras(estadisticas.horas_estudiadas)}
+              </Text>
               <Text style={styles.statLabel}>Horas de estudio</Text>
             </View>
           </View>
@@ -428,69 +432,16 @@ export default function PerfilScreen() {
                 <Text style={styles.codigoButtonText}>📋 Copiar código</Text>
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.codigoButton, styles.codigoButtonSecondary]}
+                style={styles.compartirCodigoButton}
                 onPress={compartirCodigo}
               >
-                <Text style={styles.codigoButtonText}>📤 Compartir</Text>
+                <Ionicons name="share-outline" size={16} color="#8B5CF6" />
+                <Text style={styles.compartirCodigoButtonText}>Compartir código</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       )}
-
-      {/* Configuración */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>⚙️ CONFIGURACIÓN</Text>
-        <TouchableOpacity 
-          style={styles.configItem}
-          onPress={() => router.push('/editar-perfil')}
-        >
-          <Text style={styles.configIcon}>✏️</Text>
-          <Text style={styles.configText}>Editar perfil</Text>
-          <Text style={styles.configArrow}>›</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.configItem}
-          onPress={() => router.push('/cambiar-contrasena')}
-        >
-          <Text style={styles.configIcon}>🔒</Text>
-          <Text style={styles.configText}>Cambiar contraseña</Text>
-          <Text style={styles.configArrow}>›</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.configItem}
-          onPress={() => router.push('/notificaciones')}
-        >
-          <Text style={styles.configIcon}>🔔</Text>
-          <Text style={styles.configText}>Notificaciones</Text>
-          <Text style={styles.configArrow}>›</Text>
-        </TouchableOpacity>
-        {user?.alumno && (
-          <TouchableOpacity 
-            style={styles.configItem}
-            onPress={() => router.push('/agregar-amigo')}
-          >
-            <Text style={styles.configIcon}>👥</Text>
-            <Text style={styles.configText}>Agregar amigo</Text>
-            <Text style={styles.configArrow}>›</Text>
-          </TouchableOpacity>
-        )}
-        {user?.padre && (
-          <TouchableOpacity 
-            style={styles.configItem}
-            onPress={() => router.push('/vincular-hijo')}
-          >
-            <Text style={styles.configIcon}>👨‍👩‍👧‍👦</Text>
-            <Text style={styles.configText}>Vincular hijo/a</Text>
-            <Text style={styles.configArrow}>›</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Botón de Logout */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutButtonText}>🚪 Cerrar Sesión</Text>
-      </TouchableOpacity>
 
       <View style={styles.bottomSpacing} />
     </ScrollView>
@@ -708,53 +659,31 @@ const styles = StyleSheet.create({
     fontWeight: '600', // semibold
     color: '#FFFFFF',
   },
-  configItem: {
-    backgroundColor: '#FFFFFF',
-    padding: 20, // lg spacing
-    borderRadius: 20, // 2xl borderRadius
-    marginBottom: 12,
+  configButtonHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    borderWidth: 2,
+    borderColor: '#8B5CF6',
     shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 2,
   },
-  configIcon: {
-    fontSize: 24,
-    marginRight: 16,
+  configButtonHeaderIcon: {
+    fontSize: 18,
+    marginRight: 8,
   },
-  configText: {
-    flex: 1,
-    fontSize: 16, // base font size
-    fontWeight: '600', // semibold
-    color: '#1F2937', // neutral.black
-  },
-  configArrow: {
-    fontSize: 24,
-    color: '#8B5CF6', // primary.violet
-    fontWeight: '300',
-  },
-  logoutButton: {
-    backgroundColor: '#EF4444', // red
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 9999, // full (pill-shaped)
-    marginHorizontal: 16,
-    marginTop: 8,
-    alignItems: 'center',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  logoutButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16, // base font size
-    fontWeight: '600', // semibold
-    letterSpacing: 0.3,
+  configButtonHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B5CF6',
   },
   bottomSpacing: {
     height: 24,
@@ -899,6 +828,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   compartirCodigoButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -906,8 +836,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     backgroundColor: '#F3F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 2,
+    borderColor: '#8B5CF6',
     gap: 6,
   },
   compartirCodigoButtonText: {

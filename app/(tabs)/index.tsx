@@ -68,22 +68,18 @@ export default function HomeScreen() {
 
   // Obtener nombre del usuario o del hijo
   const nombreParaMostrar = esPadre 
-    ? (hijoActivo ? `${hijoActivo.nombre} ${hijoActivo.apellido}` : 'Hijo/a')
+    ? (user?.usuario?.nombre || 'Padre')
     : (user?.usuario?.nombre || 'Usuario');
   const apellidoParaMostrar = esPadre 
-    ? (hijoActivo?.apellido || '')
+    ? (user?.usuario?.apellido || '')
     : (user?.usuario?.apellido || '');
   
-  // Calcular iniciales
-  const iniciales = esPadre && hijoActivo
-    ? hijoActivo.iniciales
-    : apellidoParaMostrar
+  // Calcular iniciales (siempre del usuario actual, no del hijo)
+  const iniciales = apellidoParaMostrar
     ? `${nombreParaMostrar.charAt(0).toUpperCase()}${apellidoParaMostrar.charAt(0).toUpperCase()}`
     : nombreParaMostrar.substring(0, 2).toUpperCase();
   
-  const avatarColor = esPadre && hijoActivo
-    ? (hijoActivo.avatar_color as any)
-    : seleccionarColorPorNombre(nombreParaMostrar + apellidoParaMostrar);
+  const avatarColor = seleccionarColorPorNombre(nombreParaMostrar + apellidoParaMostrar);
 
   // Formatear fecha
   const formatearFecha = (fecha: string) => {
@@ -163,7 +159,7 @@ export default function HomeScreen() {
           <View style={styles.userInfo}>
             {esPadre ? (
               <>
-                <Text style={styles.greeting}>Progreso de {hijoActivo?.nombre} 👋</Text>
+                <Text style={styles.greeting}>Hola {user?.usuario?.nombre || 'Padre'} 👋</Text>
                 <Text style={styles.subtitle}>Vista de seguimiento</Text>
               </>
             ) : (

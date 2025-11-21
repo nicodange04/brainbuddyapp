@@ -29,6 +29,17 @@ export interface ProgresoExamen {
   color: string;
 }
 
+export interface SesionExamen {
+  sesion_id: string;
+  nombre: string;
+  tema: string;
+  fecha: string;
+  estado: string;
+  puntaje_obtenido: number | null;
+  tiempo_estudio: number | null;
+  updated_at: string;
+}
+
 /**
  * Obtiene las métricas principales de progreso del usuario
  */
@@ -52,11 +63,10 @@ export async function getMetricasProgreso(alumnoId: string): Promise<MetricasPro
     const examenIds = examenes.map(e => e.examen_id);
     const sesionesTotales = examenes.reduce((sum, e) => sum + (e.total_sesiones_planificadas || 0), 0);
 
-    // 2. Obtener todas las sesiones de estudio
-    // Nota: Si puntaje_obtenido no existe, usaremos 0 como valor por defecto
+    // 2. Obtener todas las sesiones de estudio con puntajes reales
     const { data: sesiones, error: sesionesError } = await supabase
       .from('sesionestudio')
-      .select('estado, updated_at')
+      .select('estado, updated_at, puntaje_obtenido')
       .in('examen_id', examenIds);
 
     if (sesionesError) {
@@ -67,12 +77,13 @@ export async function getMetricasProgreso(alumnoId: string): Promise<MetricasPro
     const sesionesCompletadas = sesiones?.filter(s => s.estado === 'Completada') || [];
     const sesionesCompletadasCount = sesionesCompletadas.length;
 
-    // 3. Calcular promedio de puntaje
-    // Por ahora estimamos 100 puntos por sesión completada hasta que se implemente puntaje_obtenido
-    const promedioPuntaje = sesionesCompletadasCount > 0 ? 100 : 0;
-
-    // 4. Calcular puntos totales (estimado: 100 puntos por sesión completada)
-    const puntosTotales = sesionesCompletadasCount * 100;
+    // 3. Calcular promedio de puntaje usando los puntajes reales
+    const puntosTotales = sesionesCompletadas.reduce((sum, s) => {
+      return sum + (s.puntaje_obtenido || 0);
+    }, 0);
+    const promedioPuntaje = sesionesCompletadasCount > 0 
+      ? Math.round(puntosTotales / sesionesCompletadasCount) 
+      : 0;
 
     // 5. Calcular racha actual (días consecutivos con sesiones completadas)
     const rachaActual = calcularRachaActual(sesionesCompletadas);
@@ -113,11 +124,10 @@ export async function getHorasPorDiaSemana(alumnoId: string): Promise<HorasPorDi
     hace7Dias.setDate(hace7Dias.getDate() - 7);
     hace7Dias.setHours(0, 0, 0, 0);
 
-    // Obtener sesiones completadas de la última semana
-    // Nota: Si tiempo_estudio no existe, usaremos 45 minutos como valor por defecto
+    // Obtener sesiones completadas de la última semana con tiempo_estudio
     const { data: sesiones, error: sesionesError } = await supabase
       .from('sesionestudio')
-      .select('fecha, updated_at')
+      .select('fecha, updated_at, tiempo_estudio')
       .in('examen_id', examenIds)
       .eq('estado', 'Completada')
       .gte('updated_at', hace7Dias.toISOString());
@@ -133,7 +143,8 @@ export async function getHorasPorDiaSemana(alumnoId: string): Promise<HorasPorDi
     sesiones?.forEach(sesion => {
       const fecha = new Date(sesion.updated_at || sesion.fecha);
       const diaSemana = fecha.getDay(); // 0 = Domingo, 1 = Lunes, etc.
-      const horas = (sesion.tiempo_estudio || 45) / 60; // Convertir minutos a horas
+      // tiempo_estudio está en minutos, convertir a horas
+      const horas = (sesion.tiempo_estudio || 0) / 60;
       
       const horasActuales = horasPorDia.get(diaSemana) || 0;
       horasPorDia.set(diaSemana, horasActuales + horas);
@@ -185,11 +196,10 @@ export async function getProgresoExamenes(alumnoId: string): Promise<ProgresoExa
 
     const examenIds = examenes.map(e => e.examen_id);
 
-    // Obtener sesiones de todos los exámenes
-    // Nota: Si puntaje_obtenido no existe, usaremos 0 como valor por defecto
+    // Obtener sesiones de todos los exámenes con puntajes reales
     const { data: sesiones, error: sesionesError } = await supabase
       .from('sesionestudio')
-      .select('examen_id, estado')
+      .select('examen_id, estado, puntaje_obtenido')
       .in('examen_id', examenIds);
 
     if (sesionesError) {
@@ -211,9 +221,13 @@ export async function getProgresoExamenes(alumnoId: string): Promise<ProgresoExa
       const sesionesCompletadas = sesionesExamen.filter(s => s.estado === 'Completada');
       const sesionesCompletadasCount = sesionesCompletadas.length;
       
-      // Calcular promedio de puntaje
-      // Por ahora estimamos 100 puntos por sesión completada hasta que se implemente puntaje_obtenido
-      const averageScore = sesionesCompletadasCount > 0 ? 100 : 0;
+      // Calcular promedio de puntaje usando los puntajes reales
+      const puntosTotales = sesionesCompletadas.reduce((sum, s) => {
+        return sum + (s.puntaje_obtenido || 0);
+      }, 0);
+      const averageScore = sesionesCompletadasCount > 0 
+        ? Math.round(puntosTotales / sesionesCompletadasCount) 
+        : 0;
 
       // Obtener icono y color según materia
       const { icon, color } = obtenerIconoYColorPorMateria(examen.materia);
@@ -334,5 +348,28 @@ function getDiasSemanaVacios(): HorasPorDia[] {
     value: 0,
     color: index % 2 === 0 ? DesignColors.accent.orange : DesignColors.accent.coral,
   }));
+}
+
+/**
+ * Obtiene las sesiones de estudio de un examen específico
+ */
+export async function getSesionesExamen(examenId: string): Promise<SesionExamen[]> {
+  try {
+    const { data: sesiones, error } = await supabase
+      .from('sesionestudio')
+      .select('sesion_id, nombre, tema, fecha, estado, puntaje_obtenido, tiempo_estudio, updated_at')
+      .eq('examen_id', examenId)
+      .order('fecha', { ascending: false });
+
+    if (error) {
+      console.error('Error al obtener sesiones del examen:', error);
+      return [];
+    }
+
+    return sesiones || [];
+  } catch (error) {
+    console.error('Error al obtener sesiones del examen:', error);
+    return [];
+  }
 }
 

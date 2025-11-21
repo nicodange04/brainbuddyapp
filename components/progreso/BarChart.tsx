@@ -19,6 +19,23 @@ export function BarChart({ data, maxValue, title }: BarChartProps) {
   const max = maxValue || Math.max(...data.map((d) => d.value), 0);
   const chartHeight = 200;
 
+  /**
+   * Formatea las horas de manera legible
+   */
+  const formatearHoras = (horas: number): string => {
+    if (horas === 0) return '0h';
+    
+    // Si es menos de 1 hora, mostrar en minutos
+    if (horas < 1) {
+      const minutos = Math.round(horas * 60);
+      return `${minutos} min`;
+    }
+    
+    // Si es 1 hora o más, mostrar horas con 1 decimal
+    const horasRedondeadas = Math.round(horas * 10) / 10;
+    return `${horasRedondeadas}h`;
+  };
+
   return (
     <View style={styles.container}>
       {title && <Text style={styles.title}>{title}</Text>}
@@ -40,7 +57,7 @@ export function BarChart({ data, maxValue, title }: BarChartProps) {
                   />
                   {item.value > 0 && (
                     <Text style={styles.barValue} numberOfLines={1}>
-                      {item.value}h
+                      {formatearHoras(item.value)}
                     </Text>
                   )}
                 </View>

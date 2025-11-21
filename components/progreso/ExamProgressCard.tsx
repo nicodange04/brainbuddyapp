@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { DesignBorderRadius, DesignColors, DesignShadows, DesignSpacing, DesignTypography } from '@/constants/design';
 
@@ -20,60 +21,77 @@ interface ExamProgressCardProps {
 }
 
 export function ExamProgressCard({ exam }: ExamProgressCardProps) {
+  const router = useRouter();
   const progressPercentage = exam.sessionsTotal > 0
     ? (exam.sessionsCompleted / exam.sessionsTotal) * 100
     : 0;
 
-  return (
-    <View style={styles.card}>
-      <View style={styles.header}>
-        <View
-          style={[
-            styles.iconContainer,
-            { backgroundColor: exam.color },
-          ]}
-        >
-          <Ionicons
-            name={exam.icon}
-            size={24}
-            color={DesignColors.secondary.white}
-          />
-        </View>
-        <View style={styles.headerText}>
-          <Text style={styles.examName}>{exam.name}</Text>
-          <Text style={styles.subject}>{exam.subject}</Text>
-        </View>
-      </View>
+  const handlePress = () => {
+    router.push({
+      pathname: '/detalle-examen',
+      params: {
+        examenId: exam.id,
+        examenNombre: exam.name,
+        examenMateria: exam.subject,
+      },
+    });
+  };
 
-      <View style={styles.progressSection}>
-        <View style={styles.progressHeader}>
-          <Text style={styles.progressLabel}>Sesiones</Text>
-          <Text style={styles.progressValue}>
-            {exam.sessionsCompleted}/{exam.sessionsTotal}
-          </Text>
-        </View>
-        <View style={styles.progressBarContainer}>
+  return (
+    <TouchableOpacity style={styles.card} onPress={handlePress} activeOpacity={0.7}>
+      <View style={styles.content}>
+        <View style={styles.header}>
           <View
             style={[
-              styles.progressBar,
-              {
-                width: `${progressPercentage}%`,
-                backgroundColor: exam.color,
-              },
+              styles.iconContainer,
+              { backgroundColor: exam.color },
             ]}
-          />
+          >
+            <Ionicons
+              name={exam.icon}
+              size={24}
+              color={DesignColors.secondary.white}
+            />
+          </View>
+          <View style={styles.headerText}>
+            <Text style={styles.examName}>{exam.name}</Text>
+            <Text style={styles.subject}>{exam.subject}</Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.scoreSection}>
-        <View style={styles.scoreItem}>
-          <Text style={styles.scoreLabel}>Promedio</Text>
-          <Text style={[styles.scoreValue, { color: exam.color }]}>
-            {exam.averageScore}/100
-          </Text>
+        <View style={styles.progressSection}>
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressLabel}>Sesiones</Text>
+            <Text style={styles.progressValue}>
+              {exam.sessionsCompleted}/{exam.sessionsTotal}
+            </Text>
+          </View>
+          <View style={styles.progressBarContainer}>
+            <View
+              style={[
+                styles.progressBar,
+                {
+                  width: `${progressPercentage}%`,
+                  backgroundColor: exam.color,
+                },
+              ]}
+            />
+          </View>
+        </View>
+
+        <View style={styles.scoreSection}>
+          <View style={styles.scoreItem}>
+            <Text style={styles.scoreLabel}>Promedio</Text>
+            <Text style={[styles.scoreValue, { color: exam.color }]}>
+              {exam.averageScore}/100
+            </Text>
+          </View>
         </View>
       </View>
-    </View>
+      <View style={styles.arrowContainer}>
+        <Ionicons name="chevron-forward" size={20} color={DesignColors.neutral.mediumGray} />
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -84,6 +102,11 @@ const styles = StyleSheet.create({
     padding: DesignSpacing.lg,
     marginBottom: DesignSpacing.md,
     ...DesignShadows.soft,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  content: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -155,6 +178,9 @@ const styles = StyleSheet.create({
   scoreValue: {
     fontSize: DesignTypography.fontSize['2xl'],
     fontWeight: DesignTypography.fontWeight.bold,
+  },
+  arrowContainer: {
+    marginLeft: DesignSpacing.sm,
   },
 });
 
