@@ -31,6 +31,7 @@ export default function RootLayout() {
             <Stack.Screen name="recuperar-contrasena" options={{ headerShown: false }} />
             <Stack.Screen name="notificaciones" options={{ headerShown: false }} />
             <Stack.Screen name="vincular-hijo" options={{ headerShown: false }} />
+            <Stack.Screen name="agregar-amigo" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>

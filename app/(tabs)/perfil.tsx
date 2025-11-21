@@ -1,6 +1,7 @@
 import { Avatar } from '@/components/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { generarIniciales, seleccionarColorPorNombre } from '@/services/avatar';
+import { getCodigoAmistad, getRankingAmigos, RankingAmigo } from '@/services/amigos';
 import { EstadisticasPerfil, getEstadisticasUsuario, getTrofeosUsuario, Trofeo } from '@/services/perfil';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -15,7 +16,11 @@ export default function PerfilScreen() {
   const router = useRouter();
   const [estadisticas, setEstadisticas] = useState<EstadisticasPerfil | null>(null);
   const [trofeos, setTrofeos] = useState<Trofeo[]>([]);
+  const [ranking, setRanking] = useState<RankingAmigo[]>([]);
+  const [codigoAmistad, setCodigoAmistad] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingRanking, setLoadingRanking] = useState(false);
+  const [tipoRanking, setTipoRanking] = useState<'amigos' | 'clase'>('amigos');
 
   const cargarDatos = async () => {
     if (!user?.usuario?.usuario_id) {
@@ -25,17 +30,35 @@ export default function PerfilScreen() {
 
     setLoading(true);
     try {
-      const [stats, trofeosData] = await Promise.all([
+      const [stats, trofeosData, codigo, rankingData] = await Promise.all([
         user.alumno ? getEstadisticasUsuario(user.alumno.alumno_id) : Promise.resolve(null),
         user.alumno ? getTrofeosUsuario(user.alumno.alumno_id) : Promise.resolve([]),
+        user.alumno ? getCodigoAmistad(user.alumno.alumno_id) : Promise.resolve(null),
+        user.alumno ? getRankingAmigos(user.alumno.alumno_id) : Promise.resolve([]),
       ]);
 
       setEstadisticas(stats);
       setTrofeos(trofeosData || []);
+      setCodigoAmistad(codigo);
+      setRanking(rankingData || []);
     } catch (error) {
       console.error('Error al cargar datos del perfil:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const cargarRanking = async () => {
+    if (!user?.alumno?.alumno_id) return;
+
+    setLoadingRanking(true);
+    try {
+      const rankingData = await getRankingAmigos(user.alumno.alumno_id);
+      setRanking(rankingData || []);
+    } catch (error) {
+      console.error('Error al cargar ranking:', error);
+    } finally {
+      setLoadingRanking(false);
     }
   };
 
@@ -79,6 +102,15 @@ export default function PerfilScreen() {
     }
     await Clipboard.setStringAsync(codigo);
     Alert.alert('Código copiado', 'El código se ha copiado al portapapeles');
+  };
+
+  const copiarCodigoAmistad = async () => {
+    if (!codigoAmistad) {
+      Alert.alert('Error', 'No se pudo obtener el código de amistad');
+      return;
+    }
+    await Clipboard.setStringAsync(codigoAmistad);
+    Alert.alert('Código copiado', 'El código de amistad se ha copiado al portapapeles');
   };
 
   const compartirCodigo = async () => {
@@ -172,6 +204,165 @@ export default function PerfilScreen() {
               <Text style={styles.statLabel}>Horas de estudio</Text>
             </View>
           </View>
+        </View>
+      )}
+
+      {/* Ranking de Amigos (solo para alumnos) */}
+      {user?.alumno && (
+        <View style={styles.section}>
+          {/* Título y Subtítulo */}
+          <View style={styles.rankingHeader}>
+            <Text style={styles.rankingTitulo}>🏆 Ranking</Text>
+            <Text style={styles.rankingSubtitulo}>
+              Compite con tus amigos y compañeros de clase
+            </Text>
+          </View>
+
+          {/* Selector de tipo de ranking */}
+          <View style={styles.rankingSelector}>
+            <TouchableOpacity
+              style={[
+                styles.rankingSelectorButton,
+                tipoRanking === 'amigos' ? styles.rankingSelectorButtonActivo : styles.rankingSelectorButtonInactivo
+              ]}
+              onPress={() => setTipoRanking('amigos')}
+            >
+              <Text style={
+                tipoRanking === 'amigos' 
+                  ? styles.rankingSelectorButtonTextActivo 
+                  : styles.rankingSelectorButtonTextInactivo
+              }>
+                Amigos
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.rankingSelectorButton,
+                tipoRanking === 'clase' ? styles.rankingSelectorButtonActivo : styles.rankingSelectorButtonInactivo
+              ]}
+              onPress={() => setTipoRanking('clase')}
+            >
+              <Text style={
+                tipoRanking === 'clase' 
+                  ? styles.rankingSelectorButtonTextActivo 
+                  : styles.rankingSelectorButtonTextInactivo
+              }>
+                Clase
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {tipoRanking === 'amigos' ? (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>RANKING DE AMIGOS</Text>
+                <TouchableOpacity onPress={cargarRanking} disabled={loadingRanking}>
+                  <Ionicons 
+                    name="refresh" 
+                    size={20} 
+                    color={loadingRanking ? '#9CA3AF' : '#8B5CF6'} 
+                  />
+                </TouchableOpacity>
+              </View>
+              
+              {loadingRanking ? (
+                <View style={styles.rankingLoadingContainer}>
+                  <ActivityIndicator size="small" color="#8B5CF6" />
+                </View>
+              ) : ranking.length > 0 ? (
+            <View style={styles.rankingCard}>
+              {ranking.map((amigo, index) => (
+                <View
+                  key={amigo.usuario_id}
+                  style={[
+                    styles.rankingItem,
+                    amigo.es_yo && styles.rankingItemYo,
+                    index === 0 && styles.rankingItemPrimero,
+                  ]}
+                >
+                  <View style={styles.rankingPosicion}>
+                    {index === 0 && <Text style={styles.rankingMedalla}>🥇</Text>}
+                    {index === 1 && <Text style={styles.rankingMedalla}>🥈</Text>}
+                    {index === 2 && <Text style={styles.rankingMedalla}>🥉</Text>}
+                    {index > 2 && (
+                      <Text style={styles.rankingPosicionTexto}>#{amigo.posicion}</Text>
+                    )}
+                  </View>
+                  <Avatar
+                    iniciales={`${amigo.nombre.charAt(0)}${amigo.apellido.charAt(0)}`}
+                    color={amigo.avatar_color as any}
+                    size="small"
+                  />
+                  <View style={styles.rankingInfo}>
+                    <Text style={styles.rankingNombre}>
+                      {amigo.nombre} {amigo.apellido}
+                      {amigo.es_yo && ' (Tú)'}
+                    </Text>
+                    <View style={styles.rankingStats}>
+                      <Text style={styles.rankingStat}>
+                        ⭐ {amigo.puntos_totales.toLocaleString()} pts
+                      </Text>
+                      <Text style={styles.rankingStat}>
+                        🔥 {amigo.racha_actual} días
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.rankingEmptyCard}>
+              <Ionicons name="people-outline" size={48} color="#9CA3AF" />
+              <Text style={styles.rankingEmptyText}>Aún no tienes amigos</Text>
+              <Text style={styles.rankingEmptySubtext}>
+                Agrega amigos para competir en el ranking
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.rankingActions}>
+            <TouchableOpacity
+              style={styles.agregarAmigoButton}
+              onPress={() => router.push('/agregar-amigo')}
+            >
+              <Ionicons name="person-add" size={18} color="#FFFFFF" />
+              <Text style={styles.agregarAmigoButtonText}>Agregar Amigo</Text>
+            </TouchableOpacity>
+            
+            {codigoAmistad && (
+              <TouchableOpacity
+                style={styles.compartirCodigoButton}
+                onPress={() => {
+                  Alert.alert(
+                    'Tu código de amistad',
+                    codigoAmistad,
+                    [
+                      { text: 'Cancelar', style: 'cancel' },
+                      {
+                        text: 'Copiar',
+                        onPress: async () => {
+                          await copiarCodigoAmistad();
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <Ionicons name="share-outline" size={16} color="#8B5CF6" />
+                <Text style={styles.compartirCodigoButtonText}>Compartir código</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+            </>
+          ) : (
+            <View style={styles.rankingEmptyCard}>
+              <Ionicons name="school-outline" size={48} color="#9CA3AF" />
+              <Text style={styles.rankingEmptyText}>Ranking de Clase</Text>
+              <Text style={styles.rankingEmptySubtext}>
+                Próximamente: compite con todos tus compañeros de clase
+              </Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -274,6 +465,16 @@ export default function PerfilScreen() {
           <Text style={styles.configText}>Notificaciones</Text>
           <Text style={styles.configArrow}>›</Text>
         </TouchableOpacity>
+        {user?.alumno && (
+          <TouchableOpacity 
+            style={styles.configItem}
+            onPress={() => router.push('/agregar-amigo')}
+          >
+            <Text style={styles.configIcon}>👥</Text>
+            <Text style={styles.configText}>Agregar amigo</Text>
+            <Text style={styles.configArrow}>›</Text>
+          </TouchableOpacity>
+        )}
         {user?.padre && (
           <TouchableOpacity 
             style={styles.configItem}
@@ -582,6 +783,187 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B5CF6',
   },
   trofeoNombreBloqueado: {
+    color: '#9CA3AF',
+  },
+  rankingLoadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  rankingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  rankingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F9FAFB',
+  },
+  rankingItemPrimero: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 2,
+    borderColor: '#FCD34D',
+  },
+  rankingItemYo: {
+    backgroundColor: '#EDE9FE',
+    borderWidth: 2,
+    borderColor: '#8B5CF6',
+  },
+  rankingPosicion: {
+    width: 40,
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  rankingMedalla: {
+    fontSize: 24,
+  },
+  rankingPosicionTexto: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  rankingInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  rankingNombre: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  rankingStats: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  rankingStat: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  rankingEmptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  rankingEmptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  rankingEmptySubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  rankingActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  agregarAmigoButton: {
+    flex: 1,
+    backgroundColor: '#8B5CF6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 6,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  agregarAmigoButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  compartirCodigoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 6,
+  },
+  compartirCodigoButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B5CF6',
+  },
+  rankingHeader: {
+    marginBottom: 16,
+  },
+  rankingTitulo: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1F2937',
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  rankingSubtitulo: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  rankingSelector: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+  },
+  rankingSelectorButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankingSelectorButtonActivo: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  rankingSelectorButtonInactivo: {
+    backgroundColor: 'transparent',
+  },
+  rankingSelectorButtonTextActivo: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#8B5CF6',
+  },
+  rankingSelectorButtonTextInactivo: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#9CA3AF',
   },
 });
