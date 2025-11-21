@@ -28,6 +28,7 @@ export default function RootLayout() {
             <Stack.Screen name="sesion-estudio" options={{ headerShown: false }} />
             <Stack.Screen name="editar-perfil" options={{ headerShown: false }} />
             <Stack.Screen name="cambiar-contrasena" options={{ headerShown: false }} />
+            <Stack.Screen name="recuperar-contrasena" options={{ headerShown: false }} />
             <Stack.Screen name="notificaciones" options={{ headerShown: false }} />
             <Stack.Screen name="vincular-hijo" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

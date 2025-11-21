@@ -1,5 +1,5 @@
 // services/password.ts
-// Servicios para cambiar contraseña
+// Servicios para cambiar contraseña y recuperar contraseña
 
 import { supabase } from './supabase';
 
@@ -46,6 +46,35 @@ export async function cambiarContrasena(
     return true;
   } catch (error: any) {
     console.error('Error al cambiar contraseña:', error);
+    throw error;
+  }
+}
+
+/**
+ * Envía un email de recuperación de contraseña
+ * @param email Email del usuario que quiere recuperar su contraseña
+ */
+export async function recuperarContrasena(email: string): Promise<void> {
+  try {
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      throw new Error('Por favor ingresa un email válido');
+    }
+
+    // Enviar email de recuperación usando Supabase Auth
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: 'brainbuddy://reset-password', // URL de redirección después de resetear
+    });
+
+    if (error) {
+      // No revelar si el email existe o no por seguridad
+      throw new Error('Si el email existe, recibirás un enlace para restablecer tu contraseña');
+    }
+
+    // Si no hay error, el email fue enviado exitosamente
+  } catch (error: any) {
+    console.error('Error al recuperar contraseña:', error);
     throw error;
   }
 }
