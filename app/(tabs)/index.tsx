@@ -3,18 +3,19 @@ import { SelectorHijo } from '@/components/SelectorHijo';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePadre } from '@/contexts/PadreContext';
 import { seleccionarColorPorNombre } from '@/services/avatar';
-import { getProximaSesion, getProximosExamenes, ProximaSesion, ProximoExamen } from '@/services/home';
+import { getProximaSesion, getProximasSesiones, getProximosExamenes, getSesionesPendientes, ProximaSesion, ProximoExamen, SesionPendiente } from '@/services/home';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DesignColors } from '@/constants/design';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
   const { hijoActivo, loading: loadingPadre } = usePadre();
-  const [proximaSesion, setProximaSesion] = useState<ProximaSesion | null>(null);
+  const [proximasSesiones, setProximasSesiones] = useState<(ProximaSesion & { esPendiente?: boolean; diasAtraso?: number })[]>([]);
   const [proximosExamenes, setProximosExamenes] = useState<ProximoExamen[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,12 +43,50 @@ export default function HomeScreen() {
 
     setLoading(true);
     try {
-      const [sesion, examenes] = await Promise.all([
-        getProximaSesion(alumnoIdParaUsar),
+      const [sesionesFuturas, examenes, pendientes] = await Promise.all([
+        getProximasSesiones(alumnoIdParaUsar, 3), // Obtener hasta 3 futuras
         getProximosExamenes(alumnoIdParaUsar),
+        getSesionesPendientes(alumnoIdParaUsar, 3), // Obtener hasta 3 pendientes
       ]);
 
-      setProximaSesion(sesion);
+      // Combinar sesiones pendientes y futuras
+      const sesionesCombinadas: (ProximaSesion & { esPendiente?: boolean; diasAtraso?: number })[] = [];
+
+      // Primero agregar sesiones pendientes (máximo 3)
+      if (pendientes && pendientes.length > 0) {
+        pendientes.slice(0, 3).forEach(pendiente => {
+          sesionesCombinadas.push({
+            sesion_id: pendiente.sesion_id,
+            nombre: pendiente.nombre,
+            tema: pendiente.tema,
+            fecha: pendiente.fecha,
+            examen_id: pendiente.examen_id,
+            examen_nombre: pendiente.examen_nombre,
+            examen_materia: pendiente.examen_materia,
+            estado: pendiente.estado,
+            esPendiente: true,
+            diasAtraso: pendiente.diasAtraso,
+          });
+        });
+      }
+
+      // Luego agregar sesiones futuras (hasta completar al menos 3 en total)
+      if (sesionesFuturas && sesionesFuturas.length > 0) {
+        sesionesFuturas.forEach(sesion => {
+          // Verificar que no esté duplicada
+          const yaExiste = sesionesCombinadas.some(s => s.sesion_id === sesion.sesion_id);
+          if (!yaExiste) {
+            sesionesCombinadas.push({
+              ...sesion,
+              esPendiente: false,
+              diasAtraso: 0,
+            });
+          }
+        });
+      }
+
+      // Asegurar que tenemos al menos 3 sesiones si hay disponibles
+      setProximasSesiones(sesionesCombinadas.slice(0, Math.max(3, sesionesCombinadas.length)));
       setProximosExamenes(examenes || []);
     } catch (error) {
       console.error('Error al cargar datos de home:', error);
@@ -104,7 +143,6 @@ export default function HomeScreen() {
 
   // Calcular progreso de sesión (simulado por ahora)
   const calcularProgreso = () => {
-    if (!proximaSesion) return 0;
     // Por ahora retornamos 0, pero esto se puede calcular basado en sesiones completadas
     return 0;
   };
@@ -178,49 +216,76 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Próxima sesión */}
-      {proximaSesion && (
+      {/* Próximas sesiones de estudio */}
+      {proximasSesiones.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>TU PRÓXIMA SESIÓN</Text>
-          <View style={styles.sesionCard}>
-            <View style={styles.sesionHeader}>
-              <View style={styles.sesionBadge}>
-                <Text style={styles.sesionBadgeText}>📚 {proximaSesion.examen_materia}</Text>
-              </View>
-              <Text style={styles.sesionFecha}>{formatearFecha(proximaSesion.fecha)}</Text>
-            </View>
-            <Text style={styles.sesionTitulo}>{proximaSesion.nombre}</Text>
-            <Text style={styles.sesionTema}>{proximaSesion.tema}</Text>
-            
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${calcularProgreso()}%` }]} />
-              </View>
-              <Text style={styles.progressText}>
-                {calcularProgreso()}% completado
-              </Text>
-            </View>
-
-            {esPadre ? (
-              <View style={[styles.primaryButton, styles.primaryButtonDisabled]}>
-                <Text style={[styles.primaryButtonText, styles.primaryButtonTextDisabled]}>
-                  Solo visualización
-                </Text>
-              </View>
-            ) : (
-              <TouchableOpacity 
-                style={styles.primaryButton}
-                onPress={() => {
-                  router.push({
-                    pathname: '/sesion-estudio',
-                    params: { sesionId: proximaSesion.sesion_id }
-                  });
-                }}
+          <Text style={styles.sectionTitle}>PRÓXIMAS SESIONES DE ESTUDIO</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.sesionesScrollContent}
+          >
+            {proximasSesiones.map((sesion) => (
+              <View 
+                key={sesion.sesion_id} 
+                style={[
+                  styles.sesionCard,
+                  styles.sesionCardHorizontal,
+                  sesion.esPendiente && styles.sesionCardPendiente
+                ]}
               >
-                <Text style={styles.primaryButtonText}>Comenzar sesión</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+                <View style={styles.sesionHeader}>
+                  <View style={styles.sesionBadge}>
+                    <Text style={styles.sesionBadgeText}>📚 {sesion.examen_materia}</Text>
+                  </View>
+                  <View style={styles.sesionHeaderRight}>
+                    {sesion.esPendiente ? (
+                      <View style={styles.sesionAtrasadaBadge}>
+                        <Text style={styles.sesionAtrasadaBadgeText}>
+                          {sesion.diasAtraso === 1 ? '1 día atrasada' : `${sesion.diasAtraso} días atrasada`}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.sesionFecha}>{formatearFecha(sesion.fecha)}</Text>
+                    )}
+                  </View>
+                </View>
+                <Text style={styles.sesionTitulo}>{sesion.nombre}</Text>
+                <Text style={styles.sesionTema}>{sesion.tema}</Text>
+                
+                <View style={styles.progressContainer}>
+                  <View style={styles.progressBar}>
+                    <View style={[styles.progressFill, { width: `${calcularProgreso()}%` }]} />
+                  </View>
+                  <Text style={styles.progressText}>
+                    {calcularProgreso()}% completado
+                  </Text>
+                </View>
+
+                {esPadre ? (
+                  <View style={[styles.primaryButton, styles.primaryButtonDisabled]}>
+                    <Text style={[styles.primaryButtonText, styles.primaryButtonTextDisabled]}>
+                      Solo visualización
+                    </Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity 
+                    style={styles.primaryButton}
+                    onPress={() => {
+                      router.push({
+                        pathname: '/sesion-estudio',
+                        params: { sesionId: sesion.sesion_id }
+                      });
+                    }}
+                  >
+                    <Text style={styles.primaryButtonText}>
+                      {sesion.esPendiente ? 'Realizar ahora' : 'Comenzar sesión'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+          </ScrollView>
         </View>
       )}
 
@@ -349,14 +414,33 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 4,
   },
+  sesionCardHorizontal: {
+    width: 320,
+    marginRight: 16,
+  },
+  sesionesScrollContent: {
+    paddingRight: 16,
+  },
+  sesionCardPendiente: {
+    borderLeftWidth: 4,
+    borderLeftColor: DesignColors.primary.violetDark,
+    borderWidth: 1,
+    borderColor: DesignColors.primary.violetLight,
+    shadowColor: DesignColors.primary.violetDark,
+    shadowOpacity: 0.15,
+  },
   sesionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
+  sesionHeaderRight: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
   sesionBadge: {
-    backgroundColor: '#F3F4F6', // lightGray
+    backgroundColor: '#F5F3FF',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12, // lg borderRadius
@@ -552,6 +636,51 @@ const styles = StyleSheet.create({
   },
   primaryButtonTextDisabled: {
     color: '#9CA3AF',
+  },
+  sesionPendienteCard: {
+    backgroundColor: DesignColors.secondary.white,
+    padding: 20,
+    borderRadius: 20,
+    marginBottom: 12,
+    shadowColor: DesignColors.primary.violetDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: DesignColors.primary.violetDark,
+    borderWidth: 1,
+    borderColor: DesignColors.primary.violetLight,
+  },
+  sesionPendienteHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sesionPendienteBadge: {
+    backgroundColor: '#F5F3FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  sesionPendienteBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: DesignColors.primary.violetDark,
+  },
+  sesionAtrasadaBadge: {
+    backgroundColor: '#F5F3FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  sesionAtrasadaBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: DesignColors.primary.violetDark,
   },
 });
 

@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PerfilScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const [estadisticas, setEstadisticas] = useState<EstadisticasPerfil | null>(null);
   const [trofeos, setTrofeos] = useState<Trofeo[]>([]);
@@ -166,13 +166,15 @@ export default function PerfilScreen() {
             📅 {formatearFechaNacimiento(user.alumno.fecha_nacimiento)}
           </Text>
         )}
-        <TouchableOpacity 
-          style={styles.configButtonHeader}
-          onPress={() => router.push('/configuracion')}
-        >
-          <Text style={styles.configButtonHeaderIcon}>⚙️</Text>
-          <Text style={styles.configButtonHeaderText}>Configuración</Text>
-        </TouchableOpacity>
+        {!user?.padre && (
+          <TouchableOpacity 
+            style={styles.configButtonHeader}
+            onPress={() => router.push('/configuracion')}
+          >
+            <Text style={styles.configButtonHeaderIcon}>⚙️</Text>
+            <Text style={styles.configButtonHeaderText}>Configuración</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Estadísticas Principales */}
@@ -440,6 +442,73 @@ export default function PerfilScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      )}
+
+      {/* Configuración (solo para padres) */}
+      {user?.padre && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>⚙️ CONFIGURACIÓN</Text>
+          <View style={styles.configCard}>
+            <TouchableOpacity 
+              style={styles.configItem}
+              onPress={() => router.push('/editar-perfil')}
+            >
+              <Text style={styles.configIcon}>✏️</Text>
+              <Text style={styles.configText}>Editar perfil</Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.configItem}
+              onPress={() => router.push('/cambiar-contrasena')}
+            >
+              <Text style={styles.configIcon}>🔒</Text>
+              <Text style={styles.configText}>Cambiar contraseña</Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.configItem}
+              onPress={() => router.push('/notificaciones')}
+            >
+              <Text style={styles.configIcon}>🔔</Text>
+              <Text style={styles.configText}>Notificaciones</Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.configItem}
+              onPress={() => router.push('/vincular-hijo')}
+            >
+              <Text style={styles.configIcon}>👨‍👩‍👧‍👦</Text>
+              <Text style={styles.configText}>Vincular hijo/a</Text>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity 
+            style={styles.logoutButton}
+            onPress={async () => {
+              Alert.alert(
+                'Cerrar Sesión',
+                '¿Estás seguro de que quieres cerrar sesión?',
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  {
+                    text: 'Cerrar Sesión',
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        await logout();
+                        router.replace('/login');
+                      } catch (error) {
+                        Alert.alert('Error', 'No se pudo cerrar la sesión');
+                      }
+                    },
+                  },
+                ]
+              );
+            }}
+          >
+            <Text style={styles.logoutButtonText}>🚪 Cerrar Sesión</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -895,5 +964,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#9CA3AF',
+  },
+  configCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+    marginBottom: 16,
+  },
+  configItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  configIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  configText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1F2937',
+  },
+  logoutButton: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FCA5A5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  logoutButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#DC2626',
   },
 });

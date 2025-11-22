@@ -23,6 +23,75 @@ export interface ProximoExamen {
   sesiones_completadas: number; // Calculado contando sesiones con estado 'Completada'
 }
 
+export interface SesionPendiente extends ProximaSesion {
+  diasAtraso: number; // Días de retraso desde la fecha programada
+}
+
+/**
+ * Obtiene múltiples sesiones futuras del alumno
+ */
+export async function getProximasSesiones(alumnoId: string, limite: number = 3): Promise<ProximaSesion[]> {
+  try {
+    // Primero obtener los exámenes del alumno
+    const { data: examenes, error: examenesError } = await supabase
+      .from('examen')
+      .select('examen_id')
+      .eq('alumno_id', alumnoId);
+
+    if (examenesError) {
+      console.error('Error al obtener exámenes:', examenesError);
+      return [];
+    }
+
+    const examenIds = examenes?.map(e => e.examen_id) || [];
+
+    if (examenIds.length === 0) {
+      return [];
+    }
+
+    // Obtener las próximas sesiones (las más cercanas en el futuro)
+    const ahora = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('sesionestudio')
+      .select(`
+        sesion_id,
+        nombre,
+        tema,
+        fecha,
+        estado,
+        examen_id,
+        examen:examen_id (
+          nombre,
+          materia
+        )
+      `)
+      .in('examen_id', examenIds)
+      .gte('fecha', ahora)
+      .eq('estado', 'NoCompletada')
+      .order('fecha', { ascending: true })
+      .limit(limite);
+
+    if (error || !data || data.length === 0) {
+      return [];
+    }
+
+    return data.map(sesion => ({
+      sesion_id: sesion.sesion_id,
+      nombre: sesion.nombre,
+      tema: sesion.tema,
+      fecha: sesion.fecha,
+      examen_id: sesion.examen_id,
+      examen_nombre: (sesion.examen as any)?.nombre || '',
+      examen_materia: (sesion.examen as any)?.materia || '',
+      estado: sesion.estado,
+    }));
+  } catch (error) {
+    console.error('Error al obtener próximas sesiones:', error);
+    return [];
+  }
+}
+
 /**
  * Obtiene la próxima sesión de estudio del alumno
  */
@@ -150,6 +219,91 @@ export async function getProximosExamenes(alumnoId: string): Promise<ProximoExam
     }));
   } catch (error) {
     console.error('Error al obtener próximos exámenes:', error);
+    return [];
+  }
+}
+
+/**
+ * Obtiene las sesiones pendientes/atrasadas del alumno
+ * (sesiones con fecha pasada y estado NoCompletada)
+ */
+export async function getSesionesPendientes(alumnoId: string, limite: number = 5): Promise<SesionPendiente[]> {
+  try {
+    // Primero obtener los exámenes del alumno
+    const { data: examenes, error: examenesError } = await supabase
+      .from('examen')
+      .select('examen_id')
+      .eq('alumno_id', alumnoId);
+
+    if (examenesError) {
+      console.error('Error al obtener exámenes:', examenesError);
+      return [];
+    }
+
+    const examenIds = examenes?.map(e => e.examen_id) || [];
+
+    if (examenIds.length === 0) {
+      return [];
+    }
+
+    // Obtener sesiones pendientes (fecha pasada y no completadas)
+    const ahora = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('sesionestudio')
+      .select(`
+        sesion_id,
+        nombre,
+        tema,
+        fecha,
+        estado,
+        examen_id,
+        examen:examen_id (
+          nombre,
+          materia
+        )
+      `)
+      .in('examen_id', examenIds)
+      .lt('fecha', ahora)
+      .eq('estado', 'NoCompletada')
+      .order('fecha', { ascending: false }) // Más recientes primero
+      .limit(limite);
+
+    if (error || !data || data.length === 0) {
+      return [];
+    }
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    hoy.setMinutes(0, 0);
+    hoy.setSeconds(0, 0);
+    hoy.setMilliseconds(0);
+
+    // Mapear resultados y calcular días de atraso
+    return data.map(sesion => {
+      const fechaSesion = new Date(sesion.fecha);
+      fechaSesion.setHours(0, 0, 0, 0);
+      fechaSesion.setMinutes(0, 0);
+      fechaSesion.setSeconds(0, 0);
+      fechaSesion.setMilliseconds(0);
+      
+      const diferenciaMs = hoy.getTime() - fechaSesion.getTime();
+      const diasAtraso = Math.max(1, Math.floor(diferenciaMs / (1000 * 60 * 60 * 24)));
+
+      return {
+        sesion_id: sesion.sesion_id,
+        nombre: sesion.nombre,
+        tema: sesion.tema,
+        fecha: sesion.fecha,
+        examen_id: sesion.examen_id,
+        examen_nombre: (sesion.examen as any)?.nombre || '',
+        examen_materia: (sesion.examen as any)?.materia || '',
+        estado: sesion.estado,
+        diasAtraso,
+      };
+    });
+  } catch (error) {
+    console.error('Error al obtener sesiones pendientes:', error);
     return [];
   }
 }

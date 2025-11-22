@@ -185,20 +185,6 @@ export default function ProgresoScreen() {
           </View>
         </View>
 
-        {/* Gráfico de Barras */}
-        <View style={styles.section}>
-          <BarChart
-            data={horasPorDia}
-            title="Horas de Estudio por Semana"
-            maxValue={Math.ceil(maxValueGrafico)}
-          />
-        </View>
-
-        {/* Trofeos */}
-        <View style={styles.section}>
-          <TrophyGrid trophies={trofeosFormateados} />
-        </View>
-
         {/* Vista por Examen */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📊 Vista por Examen</Text>
@@ -226,6 +212,20 @@ export default function ProgresoScreen() {
               />
             ))
           )}
+        </View>
+
+        {/* Gráfico de Barras */}
+        <View style={styles.section}>
+          <BarChart
+            data={horasPorDia}
+            title="Horas de Estudio por Semana"
+            maxValue={Math.ceil(maxValueGrafico)}
+          />
+        </View>
+
+        {/* Trofeos */}
+        <View style={styles.section}>
+          <TrophyGrid trophies={trofeosFormateados} />
         </View>
 
         {/* Espacio final para scroll */}
