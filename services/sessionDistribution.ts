@@ -119,6 +119,8 @@ function calcularDiasDisponibles(
 
 /**
  * Distribuye los temas del temario en sesiones de estudio
+ * PRIORIDAD: 1 sesión por día para espaciar el estudio
+ * Solo usa múltiples turnos del mismo día cuando no hay más días disponibles
  */
 function distribuirTemas(
   temario: string | any,
@@ -141,25 +143,75 @@ function distribuirTemas(
 
   if (temas.length === 0) return [];
 
+  // Paso 1: Agrupar días disponibles por fecha (para identificar días únicos)
+  const diasPorFecha = new Map<string, { fecha: string; turno: string }[]>();
+  diasDisponibles.forEach(dia => {
+    if (!diasPorFecha.has(dia.fecha)) {
+      diasPorFecha.set(dia.fecha, []);
+    }
+    diasPorFecha.get(dia.fecha)!.push(dia);
+  });
+
+  // Paso 2: Crear array de días únicos ordenados por fecha
+  const fechasUnicas = Array.from(diasPorFecha.keys()).sort();
+  
   const sesiones: { tema: string; fecha: string; turno: string }[] = [];
-  let diaIndex = 0;
+  let fechaIndex = 0; // Índice para días únicos (1 sesión por día)
+  let turnoIndexPorFecha = new Map<string, number>(); // Índice de turno por cada fecha
 
   temas.forEach(tema => {
-    if (diaIndex >= diasDisponibles.length) {
-      // Si no hay más días disponibles, usar el último día
-      const ultimoDia = diasDisponibles[diasDisponibles.length - 1];
+    // ESTRATEGIA: Primero intentar 1 sesión por día (espaciando)
+    if (fechaIndex < fechasUnicas.length) {
+      // Aún hay días únicos disponibles, usar uno por día
+      const fecha = fechasUnicas[fechaIndex];
+      const turnosDelDia = diasPorFecha.get(fecha)!;
+      
+      // Usar el primer turno disponible de este día
       sesiones.push({
         tema,
-        fecha: ultimoDia.fecha,
-        turno: ultimoDia.turno
+        fecha: turnosDelDia[0].fecha,
+        turno: turnosDelDia[0].turno
       });
+      
+      // Marcar que ya usamos el primer turno de este día
+      turnoIndexPorFecha.set(fecha, 1);
+      
+      // Avanzar al siguiente día (1 sesión por día = espaciado)
+      fechaIndex++;
     } else {
-      sesiones.push({
-        tema,
-        fecha: diasDisponibles[diaIndex].fecha,
-        turno: diasDisponibles[diaIndex].turno
-      });
-      diaIndex++;
+      // Ya usamos todos los días únicos, ahora usar turnos adicionales
+      // Empezar desde el último día hacia atrás para usar turnos adicionales
+      let asignado = false;
+      
+      // Intentar con el último día primero
+      for (let i = fechasUnicas.length - 1; i >= 0 && !asignado; i--) {
+        const fecha = fechasUnicas[i];
+        const turnosDelDia = diasPorFecha.get(fecha)!;
+        const turnoIndex = turnoIndexPorFecha.get(fecha) || 0;
+        
+        if (turnoIndex < turnosDelDia.length) {
+          // Hay turnos disponibles en este día
+          sesiones.push({
+            tema,
+            fecha: turnosDelDia[turnoIndex].fecha,
+            turno: turnosDelDia[turnoIndex].turno
+          });
+          turnoIndexPorFecha.set(fecha, turnoIndex + 1);
+          asignado = true;
+        }
+      }
+      
+      // Si no se pudo asignar (caso extremo), usar el último turno del último día
+      if (!asignado && fechasUnicas.length > 0) {
+        const ultimaFecha = fechasUnicas[fechasUnicas.length - 1];
+        const turnosUltimoDia = diasPorFecha.get(ultimaFecha)!;
+        const ultimoTurno = turnosUltimoDia[turnosUltimoDia.length - 1];
+        sesiones.push({
+          tema,
+          fecha: ultimoTurno.fecha,
+          turno: ultimoTurno.turno
+        });
+      }
     }
   });
 
