@@ -293,7 +293,11 @@ export default function HomeScreen() {
       {proximosExamenes.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>PRÓXIMOS EXÁMENES</Text>
-          <View style={styles.examenesContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.examenesScrollContent}
+          >
             {proximosExamenes.map((examen) => (
               <TouchableOpacity
                 key={examen.examen_id}
@@ -314,7 +318,7 @@ export default function HomeScreen() {
                 </View>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         </View>
       )}
 
@@ -511,12 +515,16 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
   },
+  examenesScrollContent: {
+    paddingRight: 16,
+  },
   examenCard: {
     backgroundColor: '#FFFFFF',
-    padding: 18, // lg spacing
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     borderRadius: 20, // 2xl borderRadius
-    flex: 1,
-    minWidth: '47%',
+    width: 380,
+    marginRight: 16,
     shadowColor: '#7C3AED', // violetDark
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -529,7 +537,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   examenMateria: {
     fontSize: 11, // xs font size
@@ -547,8 +555,8 @@ const styles = StyleSheet.create({
     fontSize: 16, // base font size
     fontWeight: '700', // bold
     color: '#1F2937', // neutral.black
-    marginBottom: 8,
-    lineHeight: 22,
+    marginBottom: 6,
+    lineHeight: 20,
   },
   examenStats: {
     backgroundColor: '#F3F4F6', // lightGray
