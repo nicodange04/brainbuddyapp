@@ -106,27 +106,65 @@ export async function generarQuiz(
       .join('\n\n');
 
     const prompt = `
-Genera un quiz de 10 preguntas sobre el tema: "${tema}" de la materia: "${materia}".
+Genera EXACTAMENTE 10 preguntas de opción múltiple sobre el tema: "${tema}" de la materia: "${materia}".
 
 Contenido de referencia:
 ${contenidoTexto}
 
-Requisitos:
-- 10 preguntas de opción múltiple
-- 4 opciones por pregunta
-- 3 preguntas fáciles, 4 medias, 3 difíciles
-- Nivel: Secundaria (13-18 años)
-- Incluir explicación para cada respuesta correcta
-- Formato: JSON válido
+REQUISITOS ESTRICTOS:
+1. CANTIDAD: Exactamente 10 preguntas (ni más ni menos)
+2. OPCIONES: Cada pregunta debe tener EXACTAMENTE 4 opciones
+3. DISTRIBUCIÓN DE DIFICULTAD: 3 preguntas fáciles, 4 medias, 3 difíciles
+4. NIVEL: Secundaria (13-18 años)
 
-Responde ÚNICAMENTE con el JSON en este formato:
+5. DIFICULTAD Y CALIDAD DE RESPUESTAS (CRÍTICO):
+   - Las preguntas deben requerir conocimiento ESPECÍFICO del material estudiado para responder correctamente
+   - NO deben poder responderse solo con conocimiento general o deducción lógica
+   - Todas las opciones deben ser plausibles y relacionadas al tema/materia
+   - Las opciones incorrectas deben ser conceptos, lugares, fechas, nombres o términos que aparecen en el contexto del tema pero que NO son la respuesta correcta
+   
+   Para cada pregunta, las 4 opciones deben ser:
+   - Opción CORRECTA: 100% correcta según el material, clara pero requiere conocimiento específico del contenido estudiado
+   - Opción PARECIDA 1: Muy similar a la correcta, del mismo contexto/tema pero incorrecta. Debe ser un distractor MUY plausible que solo quien estudió bien puede descartar
+   - Opción PARECIDA 2: Relacionada al tema, de un aspecto o momento diferente pero del mismo contexto histórico/conceptual. Distractor plausible que requiere conocimiento del material
+   - Opción PARECIDA 3: También relacionada al tema, pero de un contexto, época o concepto similar. Otro distractor plausible relacionado
+
+   PROHIBIDO:
+   - NO usar opciones completamente fuera de contexto (ej: si es historia de Argentina, NO usar países como Rusia, Noruega, Estados Unidos)
+   - NO usar opciones obviamente incorrectas que hagan la pregunta demasiado fácil de deducir
+   - NO usar opciones que puedan descartarse sin conocer el material
+   - TODAS las opciones deben ser conceptos/contextos que aparecen o están relacionados con el tema estudiado
+
+6. VARIACIÓN DE POSICIÓN: La respuesta correcta debe estar en diferentes posiciones (0, 1, 2, 3) a lo largo del quiz. NO siempre en la primera posición.
+
+7. CLARIDAD: La respuesta correcta debe ser UNA SOLA y estar 100% clara según el material. No debe haber ambigüedad ni múltiples respuestas que puedan ser correctas.
+
+8. EXPLICACIÓN: Incluir una explicación clara y concisa para cada respuesta correcta basada en el material.
+
+EJEMPLO DE LO QUE NO DEBES HACER:
+❌ Pregunta: "¿A quién fue a liberar San Martín?"
+❌ Opciones: ["Perú", "Rusia", "Noruega", "Estados Unidos"]
+   (Esto es muy fácil de deducir sin estudiar)
+
+EJEMPLO DE LO QUE SÍ DEBES HACER:
+✅ Pregunta: "¿Cuál fue el principal objetivo estratégico de la campaña de San Martín en 1820?"
+✅ Opciones: ["Consolidar la independencia de Perú", "Asegurar el control del Río de la Plata", "Establecer alianzas con Brasil", "Proteger las fronteras del Alto Perú"]
+   (Todas son opciones relacionadas al contexto histórico, requieren conocimiento del material)
+
+IMPORTANTE: 
+- Las preguntas deben ser desafiantes y requerir estudio del material
+- Todas las opciones incorrectas deben ser plausibles y relacionadas al tema
+- Las opciones deben confundir a quien no estudió bien el material
+- NO facilitar la respuesta con opciones obviamente incorrectas
+
+Responde ÚNICAMENTE con el JSON en este formato (sin texto adicional):
 {
   "preguntas": [
     {
       "pregunta": "¿Cuál es...?",
-      "opciones": ["Opción A", "Opción B", "Opción C", "Opción D"],
+      "opciones": ["Opción correcta", "Opción parecida 1 (muy plausible)", "Opción parecida 2 (plausible relacionada)", "Opción parecida 3 (plausible relacionada)"],
       "respuesta_correcta": 0,
-      "explicacion": "Explicación de por qué es correcta"
+      "explicacion": "Explicación clara de por qué es correcta"
     }
   ],
   "puntaje_maximo": 100
@@ -137,7 +175,7 @@ Responde ÚNICAMENTE con el JSON en este formato:
       model: 'gpt-3.5-turbo',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
-      max_tokens: 2000,
+      max_tokens: 3000,
     });
 
     const quiz = response.choices[0]?.message?.content;
@@ -149,7 +187,24 @@ Responde ÚNICAMENTE con el JSON en este formato:
     const quizLimpio = limpiarJSON(quiz);
     
     try {
-      return JSON.parse(quizLimpio) as QuizCompleto;
+      const quizParsed = JSON.parse(quizLimpio) as QuizCompleto;
+      
+      // Validar que tenga exactamente 10 preguntas
+      if (quizParsed.preguntas.length !== 10) {
+        console.warn(`⚠️ El quiz generado tiene ${quizParsed.preguntas.length} preguntas en lugar de 10`);
+      }
+      
+      // Validar que cada pregunta tenga 4 opciones
+      quizParsed.preguntas.forEach((pregunta, index) => {
+        if (pregunta.opciones.length !== 4) {
+          console.warn(`⚠️ La pregunta ${index + 1} tiene ${pregunta.opciones.length} opciones en lugar de 4`);
+        }
+      });
+      
+      // Aleatorizar las posiciones de las respuestas correctas
+      const quizAleatorizado = aleatorizarPosicionesRespuestas(quizParsed);
+      
+      return quizAleatorizado;
     } catch (parseError) {
       console.error('❌ Error al parsear JSON del quiz:', parseError);
       console.error('📄 Quiz original:', quiz);
@@ -161,6 +216,42 @@ Responde ÚNICAMENTE con el JSON en este formato:
     console.error('Error generando quiz:', error);
     throw error;
   }
+}
+
+/**
+ * Aleatoriza las posiciones de las respuestas correctas para evitar que siempre estén en la primera posición
+ */
+function aleatorizarPosicionesRespuestas(quiz: QuizCompleto): QuizCompleto {
+  const preguntasAleatorizadas = quiz.preguntas.map((pregunta) => {
+    // Crear un array de índices [0, 1, 2, 3]
+    const indices = [0, 1, 2, 3];
+    
+    // Guardar la respuesta correcta original
+    const respuestaCorrectaOriginal = pregunta.opciones[pregunta.respuesta_correcta];
+    
+    // Aleatorizar el orden de las opciones (Fisher-Yates shuffle)
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    
+    // Reordenar las opciones según los índices aleatorizados
+    const opcionesReordenadas = indices.map(idx => pregunta.opciones[idx]);
+    
+    // Encontrar la nueva posición de la respuesta correcta
+    const nuevaPosicionCorrecta = opcionesReordenadas.indexOf(respuestaCorrectaOriginal);
+    
+    return {
+      ...pregunta,
+      opciones: opcionesReordenadas,
+      respuesta_correcta: nuevaPosicionCorrecta,
+    };
+  });
+  
+  return {
+    ...quiz,
+    preguntas: preguntasAleatorizadas,
+  };
 }
 
 /**
