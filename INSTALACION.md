@@ -32,22 +32,6 @@ git clone https://github.com/nicodange04/brainbuddyapp.git
 cd brainbuddyapp
 ```
 
-**O si prefieres otra ubicación:**
-
-**Opción A - Escritorio:**
-```powershell
-cd C:\Users\TU_USUARIO\Desktop
-git clone https://github.com/nicodange04/brainbuddyapp.git
-cd brainbuddyapp
-```
-
-**Opción B - Documentos:**
-```powershell
-cd C:\Users\TU_USUARIO\Documents
-git clone https://github.com/nicodange04/brainbuddyapp.git
-cd brainbuddyapp
-```
-
 ### 1.2 Verificar la ubicación
 
 **📌 IMPORTANTE:** Guarda la ruta completa donde clonaste el proyecto. La necesitarás cada vez que quieras ejecutar el proyecto.
@@ -99,11 +83,13 @@ added 1234 packages in 2m
 
 ### 3.1 Crear el archivo .env
 
-El proyecto necesita un archivo `.env` con las configuraciones. Cópialo desde el ejemplo:
+El proyecto necesita un archivo `.env` con las configuraciones. Cópialo desde el ejemplo: ESTA EN GOOGLE DOCS DE nicolas.dangelo@davinci.edu.ar
 
 ```powershell
 Copy-Item env.example .env
 ```
+
+copiarlo del google docs
 
 ### 3.2 Verificar que el archivo .env existe
 
@@ -170,9 +156,6 @@ Después de ejecutar `npm start`, verás algo como esto:
 ## 📱 PASO 5: Abrir en tu Teléfono
 
 ### 5.1 Instalar Expo Go
-
-**Android:**
-- Play Store: https://play.google.com/store/apps/details?id=host.exp.exponent
 
 **iOS:**
 - App Store: https://apps.apple.com/app/expo-go/id982107779
