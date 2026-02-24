@@ -19,8 +19,23 @@ git push -u origin main
 ## PASO 2: En otra computadora
 
 ### 2.1 Clonar el proyecto
+
+**Abre PowerShell o CMD y ejecuta:**
+
 ```powershell
-git clone https://github.com/TU_USUARIO/brainbuddyapp.git
+git clone https://github.com/nicodange04/brainbuddyapp.git
+cd brainbuddyapp
+```
+
+**O desde cualquier carpeta:**
+```powershell
+# Navega a donde quieras guardar el proyecto (ejemplo: Escritorio)
+cd C:\Users\TU_USUARIO\Desktop
+
+# Clona el repositorio
+git clone https://github.com/nicodange04/brainbuddyapp.git
+
+# Entra a la carpeta del proyecto
 cd brainbuddyapp
 ```
 
