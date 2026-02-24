@@ -24,46 +24,42 @@ git --version
 
 ### 1.1 Elegir dónde guardar el proyecto
 
-Puedes clonar el proyecto en cualquier carpeta. Ejemplos comunes:
+**Ejemplo recomendado - Clonar directamente en C:\brainbuddyapp:**
+
+```powershell
+cd C:\
+git clone https://github.com/nicodange04/brainbuddyapp.git
+cd brainbuddyapp
+```
+
+**O si prefieres otra ubicación:**
 
 **Opción A - Escritorio:**
 ```powershell
 cd C:\Users\TU_USUARIO\Desktop
+git clone https://github.com/nicodange04/brainbuddyapp.git
+cd brainbuddyapp
 ```
 
 **Opción B - Documentos:**
 ```powershell
 cd C:\Users\TU_USUARIO\Documents
-```
-
-**Opción C - Carpeta de proyectos (recomendado):**
-```powershell
-cd C:\Users\TU_USUARIO
-mkdir proyectos
-cd proyectos
-```
-
-### 1.2 Clonar el repositorio
-
-Una vez en la carpeta donde quieres guardar el proyecto, ejecuta:
-
-```powershell
 git clone https://github.com/nicodange04/brainbuddyapp.git
-```
-
-Esto creará una carpeta llamada `brainbuddyapp` con todo el código del proyecto.
-
-### 1.3 Entrar a la carpeta del proyecto
-
-```powershell
 cd brainbuddyapp
 ```
 
+### 1.2 Verificar la ubicación
+
 **📌 IMPORTANTE:** Guarda la ruta completa donde clonaste el proyecto. La necesitarás cada vez que quieras ejecutar el proyecto.
 
-**Ejemplo de ruta completa:**
+**Ejemplo de ruta completa (recomendado):**
 ```
-C:\Users\Juan\Desktop\brainbuddyapp
+C:\brainbuddyapp
+```
+
+Para verificar dónde estás:
+```powershell
+pwd
 ```
 
 Para verificar dónde estás:
@@ -78,8 +74,8 @@ pwd
 ### 2.1 Asegúrate de estar en la carpeta del proyecto
 
 ```powershell
-# Si no estás seguro, navega a la carpeta
-cd C:\Users\TU_USUARIO\Desktop\brainbuddyapp
+# Navega a la carpeta del proyecto (ejemplo: C:\brainbuddyapp)
+cd C:\brainbuddyapp
 
 # O usa la ruta donde clonaste el proyecto
 ```
@@ -137,7 +133,7 @@ EXPO_PUBLIC_GEMINI_MODEL=gemini-1.5-flash
 ### 4.1 Asegúrate de estar en la carpeta del proyecto
 
 ```powershell
-cd C:\Users\TU_USUARIO\Desktop\brainbuddyapp
+cd C:\brainbuddyapp
 ```
 
 ### 4.2 Iniciar el servidor de desarrollo
@@ -217,7 +213,7 @@ npx expo start --tunnel
 En una **nueva terminal** (deja `npm start` corriendo), ejecuta:
 
 ```powershell
-cd C:\Users\TU_USUARIO\Desktop\brainbuddyapp
+cd C:\brainbuddyapp
 npm run test-db
 ```
 
@@ -287,7 +283,7 @@ Get-ChildItem -Path C:\ -Filter "brainbuddyapp" -Recurse -Directory -ErrorAction
 
 ```powershell
 # Navegar a la carpeta del proyecto
-cd C:\Users\TU_USUARIO\Desktop\brainbuddyapp
+cd C:\brainbuddyapp
 
 # Instalar dependencias (solo la primera vez)
 npm install
@@ -330,7 +326,7 @@ npm run verificar-instalacion
 **Cada vez que quieras ejecutar el proyecto, necesitas navegar a la carpeta:**
 
 ```powershell
-cd C:\Users\TU_USUARIO\Desktop\brainbuddyapp
+cd C:\brainbuddyapp
 ```
 
 **Para encontrar la ruta rápidamente:**
@@ -368,7 +364,8 @@ Antes de la presentación, verifica:
 ## 🎯 Resumen Ultra-Rápido
 
 ```powershell
-# 1. Clonar
+# 1. Clonar en C:\brainbuddyapp
+cd C:\
 git clone https://github.com/nicodange04/brainbuddyapp.git
 cd brainbuddyapp
 
