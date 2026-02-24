@@ -12,7 +12,7 @@ export default function CalendarioScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { hijoActivo } = usePadre();
-  const [refreshKey, setRefreshKey] = useState(0); // Clave para forzar refresh del calendario
+  const [refreshKey] = useState(0); // Clave para forzar refresh del calendario
 
   const esPadre = user?.usuario?.rol === 'padre';
 
@@ -47,7 +47,7 @@ export default function CalendarioScreen() {
           refreshKey={refreshKey}
           showOnlyCalendar={true}
           onDiaSeleccionado={(dia) => {
-            console.log('Día seleccionado:', dia);
+            // console.log('Día seleccionado:', dia); // Comentado para reducir logs
           }}
         />
 
@@ -79,7 +79,7 @@ export default function CalendarioScreen() {
           refreshKey={refreshKey}
           showOnlyActivities={true}
           onDiaSeleccionado={(dia) => {
-            console.log('Día seleccionado:', dia);
+            // console.log('Día seleccionado:', dia); // Comentado para reducir logs
           }}
         />
       </ScrollView>

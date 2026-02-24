@@ -10,7 +10,7 @@ import {
   TrophyGrid,
 } from '@/components/progreso';
 import { SelectorHijo } from '@/components/SelectorHijo';
-import { DesignColors, DesignSpacing } from '@/constants/design';
+import { DesignColors, DesignSpacing, DesignShadows } from '@/constants/design';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePadre } from '@/contexts/PadreContext';
 import {
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: DesignColors.secondary.white,
     borderRadius: 24,
-    ...DesignColors.shadows?.base,
+    ...DesignShadows.base,
   },
   emptyStateText: {
     fontSize: 18,

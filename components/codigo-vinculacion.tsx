@@ -32,7 +32,7 @@ export function CodigoVinculacion({
       
       // Resetear el estado después de 2 segundos
       setTimeout(() => setCopiado(false), 2000);
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'No se pudo copiar el código');
     }
   };

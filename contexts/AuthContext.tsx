@@ -29,7 +29,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const checkAuthState = async () => {
     try {
-      const currentUser = await getCurrentUser();
+      // Agregar timeout para evitar que bloquee la app
+      const timeoutPromise = new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), 5000);
+      });
+
+      const userPromise = getCurrentUser();
+
+      // Usar Promise.race para que no bloquee más de 5 segundos
+      const currentUser = await Promise.race([userPromise, timeoutPromise]);
       setUser(currentUser);
     } catch (error) {
       console.error('Error verificando estado de autenticación:', error);

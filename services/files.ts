@@ -123,7 +123,7 @@ export const uploadFileToStorage = async (
     console.error('Error completo en uploadFileToStorage:', error);
     return {
       success: false,
-      error: `Error inesperado: ${error.message}`
+      error: `Error inesperado: ${error instanceof Error ? error.message : String(error)}`
     };
   }
 };

@@ -3,6 +3,7 @@
 
 import { supabase } from './supabase';
 import { ContenidoTeorico, PreguntaQuiz, QuizCompleto } from './openai';
+import { MaterialCompleto } from './formatosMultimedia';
 
 export interface SesionEstudioCompleta {
   sesion_id: string;
@@ -14,7 +15,7 @@ export interface SesionEstudioCompleta {
   examen_nombre: string;
   examen_materia: string;
   material_estado: 'pendiente' | 'generando' | 'listo' | 'error';
-  material_generado: ContenidoTeorico | null;
+  material_generado: MaterialCompleto | ContenidoTeorico | null; // Puede ser MaterialCompleto o ContenidoTeorico (compatibilidad)
   quiz: QuizCompleto | null;
   mini_quiz_id: string | null;
 }
@@ -68,10 +69,11 @@ export async function getSesionEstudioCompleta(sesionId: string): Promise<Sesion
     }
 
     // 3. Parsear material generado
-    let materialGenerado: ContenidoTeorico | null = null;
+    let materialGenerado: MaterialCompleto | ContenidoTeorico | null = null;
     if (sesion.material_generado) {
       try {
-        materialGenerado = sesion.material_generado as ContenidoTeorico;
+        // Puede ser MaterialCompleto (con formatos adicionales) o ContenidoTeorico (solo texto)
+        materialGenerado = sesion.material_generado as MaterialCompleto | ContenidoTeorico;
       } catch (error) {
         console.error('Error al parsear material_generado:', error);
       }

@@ -10,12 +10,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
-  Animated,
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getSesionEstudioCompleta, marcarSesionCompletada, SesionEstudioCompleta } from '@/services/sesionEstudio';
-import { ContenidoTeorico, PreguntaQuiz } from '@/services/openai';
+import { ContenidoTeorico } from '@/services/openai';
+import { MaterialCompleto, AudioFormat, Diagrama, Flashcard } from '@/services/formatosMultimedia';
+import DiagramaVisual from '@/components/DiagramaVisual';
 
 // Design System Colors (from design.json)
 const DesignColors = {
@@ -76,6 +77,8 @@ export default function SesionEstudioScreen() {
   // Estados para Fase 1: Teoría
   const [indiceSeccionActual, setIndiceSeccionActual] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const [formatoSeleccionado, setFormatoSeleccionado] = useState<'texto' | 'audio' | 'diagramas' | 'flashcards'>('texto');
+  const [mostrarRespuestaFlashcard, setMostrarRespuestaFlashcard] = useState(false);
   
   // Estados para Fase 2: Descanso
   const [tiempoDescanso, setTiempoDescanso] = useState(5 * 60); // 5 minutos en segundos
@@ -156,6 +159,13 @@ export default function SesionEstudioScreen() {
     }
   }, [preguntaActual, faseActual]);
 
+  // Resetear índice y respuesta de flashcard cuando cambia el formato
+  useEffect(() => {
+    setIndiceSeccionActual(0);
+    setMostrarRespuestaFlashcard(false);
+    scrollViewRef.current?.scrollTo({ x: 0, animated: false });
+  }, [formatoSeleccionado]);
+
   // Formatear tiempo (mm:ss)
   const formatearTiempo = (segundos: number): string => {
     const mins = Math.floor(segundos / 60);
@@ -163,12 +173,45 @@ export default function SesionEstudioScreen() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Helper: Obtener total de secciones según formato
+  const obtenerTotalSecciones = (): number => {
+    if (!sesion?.material_generado) return 0;
+    
+    const material = sesion.material_generado;
+    
+    switch (formatoSeleccionado) {
+      case 'texto':
+        if (esMaterialCompleto(material)) {
+          return material.texto.secciones.length;
+        }
+        return (material as ContenidoTeorico)?.secciones?.length || 0;
+      case 'audio':
+        return 1; // Audio es una sola "sección"
+      case 'diagramas':
+        if (esMaterialCompleto(material) && material.diagramas) {
+          return material.diagramas.length;
+        }
+        return 0;
+      case 'flashcards':
+        if (esMaterialCompleto(material) && material.flashcards) {
+          return material.flashcards.length;
+        }
+        return 0;
+      default:
+        // Fallback: texto
+        if (esMaterialCompleto(material)) {
+          return material.texto.secciones.length;
+        }
+        return (material as ContenidoTeorico)?.secciones?.length || 0;
+    }
+  };
+
   // Navegación entre secciones de teoría
   const irASiguienteSeccion = () => {
-    if (!sesion?.material_generado) return;
-    const totalSecciones = sesion.material_generado.secciones.length;
+    const totalSecciones = obtenerTotalSecciones();
     if (indiceSeccionActual < totalSecciones - 1) {
       setIndiceSeccionActual(indiceSeccionActual + 1);
+      setMostrarRespuestaFlashcard(false); // Resetear respuesta de flashcard al cambiar
       scrollViewRef.current?.scrollTo({ x: (indiceSeccionActual + 1) * SCREEN_WIDTH, animated: true });
     } else {
       // Terminar fase de teoría
@@ -180,6 +223,7 @@ export default function SesionEstudioScreen() {
   const irAPreviaSeccion = () => {
     if (indiceSeccionActual > 0) {
       setIndiceSeccionActual(indiceSeccionActual - 1);
+      setMostrarRespuestaFlashcard(false); // Resetear respuesta de flashcard al cambiar
       scrollViewRef.current?.scrollTo({ x: (indiceSeccionActual - 1) * SCREEN_WIDTH, animated: true });
     }
   };
@@ -227,7 +271,7 @@ export default function SesionEstudioScreen() {
 
     // Avanzar después de 2 segundos
     setTimeout(() => {
-      if (preguntaActual < sesion.quiz.preguntas.length - 1) {
+      if (sesion.quiz && preguntaActual < sesion.quiz.preguntas.length - 1) {
         setPreguntaActual(preguntaActual + 1);
         setMostrarFeedback(false);
         setRespuestaSeleccionada(null);
@@ -243,7 +287,6 @@ export default function SesionEstudioScreen() {
     if (!sesion) return;
 
     // Verificar si aprobó (tiene al menos 1 vida)
-    const aprobado = vidas > 0;
     const puntajeFinal = puntos;
 
     // Marcar sesión como completada
@@ -316,21 +359,75 @@ export default function SesionEstudioScreen() {
     );
   }
 
+  // Helper: Verificar si es MaterialCompleto
+  const esMaterialCompleto = (material: any): material is MaterialCompleto => {
+    return material && typeof material === 'object' && 'texto' in material;
+  };
+
+  // Helper: Obtener contenido según formato
+  const obtenerContenidoPorFormato = () => {
+    if (!sesion?.material_generado) return null;
+    
+    const material = sesion.material_generado;
+    
+    // Si es MaterialCompleto (tiene formatos adicionales)
+    if (esMaterialCompleto(material)) {
+      switch (formatoSeleccionado) {
+        case 'texto':
+          return { tipo: 'texto', contenido: material.texto };
+        case 'audio':
+          return material.audio ? { tipo: 'audio', contenido: material.audio } : null;
+        case 'diagramas':
+          return material.diagramas && material.diagramas.length > 0 
+            ? { tipo: 'diagramas', contenido: material.diagramas } 
+            : null;
+        case 'flashcards':
+          return material.flashcards && material.flashcards.length > 0 
+            ? { tipo: 'flashcards', contenido: material.flashcards } 
+            : null;
+        default:
+          return { tipo: 'texto', contenido: material.texto };
+      }
+    }
+    
+    // Si es solo ContenidoTeorico (compatibilidad)
+    return { tipo: 'texto', contenido: material as ContenidoTeorico };
+  };
+
+  // Helper: Obtener formatos disponibles
+  const obtenerFormatosDisponibles = (): string[] => {
+    if (!sesion?.material_generado) return ['texto'];
+    
+    const material = sesion.material_generado;
+    const formatos: string[] = ['texto'];
+    
+    if (esMaterialCompleto(material)) {
+      if (material.audio) formatos.push('audio');
+      if (material.diagramas && material.diagramas.length > 0) formatos.push('diagramas');
+      if (material.flashcards && material.flashcards.length > 0) formatos.push('flashcards');
+    }
+    
+    return formatos;
+  };
+
   // FASE 1: TEORÍA
   if (faseActual === 'teoria') {
-    const secciones = sesion.material_generado?.secciones || [];
-    const seccionActual = secciones[indiceSeccionActual];
+    const material = sesion.material_generado;
+    const esCompleto = material && esMaterialCompleto(material);
+    const secciones = esCompleto ? material.texto.secciones : (material as ContenidoTeorico)?.secciones || [];
+    const formatosDisponibles = obtenerFormatosDisponibles();
+    const contenidoFormato = obtenerContenidoPorFormato();
 
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        {/* Header con progreso */}
+        {/* Header con progreso y selector de formatos */}
         <View style={styles.teoriaHeader}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Text style={styles.backButtonText}>← Atrás</Text>
           </TouchableOpacity>
           <View style={styles.progressContainer}>
             <Text style={styles.progressText}>
-              Sección {indiceSeccionActual + 1} de {secciones.length}
+              Sección {indiceSeccionActual + 1} de {obtenerTotalSecciones()}
             </Text>
             <View style={styles.progressBar}>
               <View
@@ -343,7 +440,49 @@ export default function SesionEstudioScreen() {
           </View>
         </View>
 
-        {/* Carousel de secciones */}
+        {/* Selector de formatos (solo si hay formatos adicionales) */}
+        {formatosDisponibles.length > 1 ? (
+          <View style={styles.formatosSelector}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.formatosSelectorContent}>
+              {formatosDisponibles.map((formato) => (
+                <TouchableOpacity
+                  key={formato}
+                  style={[
+                    styles.formatoButton,
+                    formatoSeleccionado === formato && styles.formatoButtonActive,
+                  ]}
+                  onPress={() => setFormatoSeleccionado(formato as any)}
+                >
+                  <Text style={styles.formatoButtonIcon}>
+                    {formato === 'texto' ? '📖' : formato === 'audio' ? '🎧' : formato === 'diagramas' ? '📊' : '🃏'}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.formatoButtonText,
+                      formatoSeleccionado === formato && styles.formatoButtonTextActive,
+                    ]}
+                  >
+                    {formato === 'texto' ? 'Texto' : formato === 'audio' ? 'Audio' : formato === 'diagramas' ? 'Diagramas' : 'Flashcards'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        ) : (
+          // Indicador si solo hay texto (sin formatos adicionales)
+          <View style={styles.formatosSelector}>
+            <View style={styles.formatoUnicoContainer}>
+              <Text style={styles.formatoUnicoText}>📖 Modo: Texto</Text>
+              <Text style={styles.formatoUnicoHint}>
+                {sesion?.material_estado === 'generando' 
+                  ? 'Generando formatos adicionales...' 
+                  : 'Los formatos adicionales se generan según tu perfil de aprendizaje'}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Carousel de secciones - Contenido según formato */}
         <ScrollView
           ref={scrollViewRef}
           horizontal
@@ -352,22 +491,117 @@ export default function SesionEstudioScreen() {
           scrollEnabled={false}
           style={styles.teoriaScrollView}
         >
-          {secciones.map((seccion, index) => (
-            <View key={index} style={[styles.teoriaCardContainer, { width: SCREEN_WIDTH }]}>
-              <ScrollView contentContainerStyle={styles.teoriaCardContent}>
-                <View style={styles.teoriaCard}>
-                  <Text style={styles.teoriaCardTitle}>{seccion.titulo}</Text>
-                  <Text style={styles.teoriaCardText}>{seccion.contenido}</Text>
-                  {seccion.tip && (
-                    <View style={styles.tipContainer}>
-                      <Text style={styles.tipLabel}>💡 Tip</Text>
-                      <Text style={styles.tipText}>{seccion.tip}</Text>
+          {(() => {
+            // Renderizar según el formato seleccionado
+            if (formatoSeleccionado === 'texto' && contenidoFormato?.tipo === 'texto') {
+              const contenidoTexto = contenidoFormato.contenido as ContenidoTeorico;
+              return contenidoTexto.secciones.map((seccion, index) => (
+                <View key={index} style={[styles.teoriaCardContainer, { width: SCREEN_WIDTH }]}>
+                  <ScrollView contentContainerStyle={styles.teoriaCardContent}>
+                    <View style={styles.teoriaCard}>
+                      <Text style={styles.teoriaCardTitle}>{seccion.titulo}</Text>
+                      <Text style={styles.teoriaCardText}>{seccion.contenido}</Text>
+                      {seccion.tip && (
+                        <View style={styles.tipContainer}>
+                          <Text style={styles.tipLabel}>💡 Tip</Text>
+                          <Text style={styles.tipText}>{seccion.tip}</Text>
+                        </View>
+                      )}
                     </View>
-                  )}
+                  </ScrollView>
                 </View>
-              </ScrollView>
-            </View>
-          ))}
+              ));
+            }
+
+            if (formatoSeleccionado === 'audio' && contenidoFormato?.tipo === 'audio') {
+              const audio = contenidoFormato.contenido as AudioFormat;
+              return (
+                <View style={[styles.teoriaCardContainer, { width: SCREEN_WIDTH }]}>
+                  <ScrollView contentContainerStyle={styles.teoriaCardContent}>
+                    <View style={styles.teoriaCard}>
+                      <Text style={styles.teoriaCardTitle}>🎧 Podcast Educativo</Text>
+                      <Text style={styles.audioDuracion}>
+                        Duración: {Math.floor(audio.duracionEstimada / 60)}:{(audio.duracionEstimada % 60).toString().padStart(2, '0')}
+                      </Text>
+                      <ScrollView style={styles.audioScriptContainer}>
+                        <Text style={styles.audioScript}>{audio.script}</Text>
+                      </ScrollView>
+                      <View style={styles.tipContainer}>
+                        <Text style={styles.tipLabel}>💡 Tip</Text>
+                        <Text style={styles.tipText}>Puedes leer este script en voz alta o usar un lector de texto a voz</Text>
+                      </View>
+                    </View>
+                  </ScrollView>
+                </View>
+              );
+            }
+
+            if (formatoSeleccionado === 'diagramas' && contenidoFormato?.tipo === 'diagramas') {
+              const diagramas = contenidoFormato.contenido as Diagrama[];
+              return diagramas.map((diagrama, index) => (
+                <View key={index} style={[styles.teoriaCardContainer, { width: SCREEN_WIDTH }]}>
+                  <DiagramaVisual diagrama={diagrama} />
+                </View>
+              ));
+            }
+
+            if (formatoSeleccionado === 'flashcards' && contenidoFormato?.tipo === 'flashcards') {
+              const flashcards = contenidoFormato.contenido as Flashcard[];
+              const flashcardActual = flashcards[Math.min(indiceSeccionActual, flashcards.length - 1)] || flashcards[0];
+              
+              return (
+                <View key={indiceSeccionActual} style={[styles.teoriaCardContainer, { width: SCREEN_WIDTH }]}>
+                  <ScrollView contentContainerStyle={styles.teoriaCardContent}>
+                    <View style={styles.teoriaCard}>
+                      <Text style={styles.flashcardProgress}>
+                        Flashcard {Math.min(indiceSeccionActual + 1, flashcards.length)} de {flashcards.length}
+                      </Text>
+                      <View style={styles.flashcardContainer}>
+                        <View style={styles.flashcard}>
+                          <Text style={styles.flashcardPregunta}>{flashcardActual.pregunta}</Text>
+                          <TouchableOpacity
+                            style={styles.flashcardFlipButton}
+                            onPress={() => setMostrarRespuestaFlashcard(!mostrarRespuestaFlashcard)}
+                          >
+                            <Text style={styles.flashcardFlipText}>
+                              {mostrarRespuestaFlashcard ? '👁️ Ocultar respuesta' : '👁️ Ver respuesta'}
+                            </Text>
+                          </TouchableOpacity>
+                          {mostrarRespuestaFlashcard && (
+                            <View style={styles.flashcardRespuesta}>
+                              <Text style={styles.flashcardRespuestaLabel}>Respuesta:</Text>
+                              <Text style={styles.flashcardRespuestaText}>{flashcardActual.respuesta}</Text>
+                              {flashcardActual.categoria && (
+                                <Text style={styles.flashcardCategoria}>📁 {flashcardActual.categoria}</Text>
+                              )}
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  </ScrollView>
+                </View>
+              );
+            }
+
+            // Fallback: mostrar texto si no hay formato disponible
+            return secciones.map((seccion, index) => (
+              <View key={index} style={[styles.teoriaCardContainer, { width: SCREEN_WIDTH }]}>
+                <ScrollView contentContainerStyle={styles.teoriaCardContent}>
+                  <View style={styles.teoriaCard}>
+                    <Text style={styles.teoriaCardTitle}>{seccion.titulo}</Text>
+                    <Text style={styles.teoriaCardText}>{seccion.contenido}</Text>
+                    {seccion.tip && (
+                      <View style={styles.tipContainer}>
+                        <Text style={styles.tipLabel}>💡 Tip</Text>
+                        <Text style={styles.tipText}>{seccion.tip}</Text>
+                      </View>
+                    )}
+                  </View>
+                </ScrollView>
+              </View>
+            ));
+          })()}
         </ScrollView>
 
         {/* Navegación */}
@@ -382,7 +616,7 @@ export default function SesionEstudioScreen() {
 
           <TouchableOpacity style={styles.primaryButton} onPress={irASiguienteSeccion}>
             <Text style={styles.primaryButtonText}>
-              {indiceSeccionActual === secciones.length - 1 ? 'Finalizar teoría' : 'Siguiente →'}
+              {indiceSeccionActual === obtenerTotalSecciones() - 1 ? 'Finalizar teoría' : 'Siguiente →'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -437,7 +671,7 @@ export default function SesionEstudioScreen() {
           <View style={styles.quizHUDItem}>
             <Text style={styles.quizHUDLabel}>Pregunta</Text>
             <Text style={styles.quizHUDValue}>
-              {preguntaActual + 1}/{sesion.quiz.preguntas.length}
+              {preguntaActual + 1}/{sesion.quiz?.preguntas.length || 0}
             </Text>
           </View>
           <View style={styles.quizHUDItem}>
@@ -505,7 +739,7 @@ export default function SesionEstudioScreen() {
             <View style={styles.gameOverCard}>
               <Text style={styles.gameOverTitle}>😔 Se acabaron las vidas</Text>
               <Text style={styles.gameOverText}>
-                Puntaje final: {puntos}/{sesion.quiz.puntaje_maximo}
+                Puntaje final: {puntos}/{sesion.quiz?.puntaje_maximo || 0}
               </Text>
               <TouchableOpacity
                 style={styles.primaryButton}
@@ -801,6 +1035,175 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: DesignColors.neutral.black,
+  },
+
+  // SELECTOR DE FORMATOS
+  formatosSelector: {
+    backgroundColor: DesignColors.secondary.white,
+    borderBottomWidth: 1,
+    borderBottomColor: DesignColors.neutral.lightGray,
+    paddingVertical: 12,
+  },
+  formatosSelectorContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  formatoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: DesignColors.neutral.lightGray,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginRight: 8,
+    gap: 6,
+  },
+  formatoButtonActive: {
+    backgroundColor: DesignColors.primary.violet,
+  },
+  formatoButtonIcon: {
+    fontSize: 18,
+  },
+  formatoButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: DesignColors.neutral.black,
+  },
+  formatoButtonTextActive: {
+    color: DesignColors.secondary.white,
+  },
+  formatoUnicoContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  formatoUnicoText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: DesignColors.neutral.black,
+    marginBottom: 4,
+  },
+  formatoUnicoHint: {
+    fontSize: 12,
+    color: DesignColors.neutral.mediumGray,
+    textAlign: 'center',
+  },
+
+  // AUDIO
+  audioDuracion: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: DesignColors.primary.violet,
+    marginBottom: 16,
+  },
+  audioScriptContainer: {
+    maxHeight: 400,
+    marginBottom: 16,
+  },
+  audioScript: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: DesignColors.neutral.darkGray,
+  },
+
+  // DIAGRAMAS
+  diagramaTipo: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: DesignColors.primary.violet,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  diagramaDatosContainer: {
+    backgroundColor: DesignColors.secondary.offWhite,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+  },
+  diagramaDatosLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: DesignColors.neutral.black,
+    marginBottom: 8,
+  },
+  diagramaDatosText: {
+    fontSize: 12,
+    fontFamily: 'monospace',
+    color: DesignColors.neutral.darkGray,
+  },
+
+  // FLASHCARDS
+  flashcardProgress: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: DesignColors.neutral.mediumGray,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  flashcardContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 300,
+  },
+  flashcard: {
+    backgroundColor: DesignColors.secondary.white,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    minHeight: 250,
+    shadowColor: DesignColors.primary.violet,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: DesignColors.primary.violetLight,
+  },
+  flashcardPregunta: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: DesignColors.neutral.black,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  flashcardFlipButton: {
+    backgroundColor: DesignColors.primary.violet,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    marginTop: 'auto',
+  },
+  flashcardFlipText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: DesignColors.secondary.white,
+  },
+  flashcardRespuesta: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: DesignColors.neutral.lightGray,
+  },
+  flashcardRespuestaLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: DesignColors.neutral.mediumGray,
+    marginBottom: 8,
+  },
+  flashcardRespuestaText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: DesignColors.neutral.black,
+    lineHeight: 26,
+    marginBottom: 12,
+  },
+  flashcardCategoria: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: DesignColors.primary.violet,
+    marginTop: 8,
   },
 
   // DESCANSO

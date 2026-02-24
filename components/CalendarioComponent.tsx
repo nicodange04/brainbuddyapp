@@ -11,7 +11,51 @@ import {
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Calendar, DateData } from 'react-native-calendars';
+import { Calendar, DateData, LocaleConfig } from 'react-native-calendars';
+
+// Configurar localización en español
+LocaleConfig.locales['es'] = {
+  monthNames: [
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre'
+  ],
+  monthNamesShort: [
+    'Ene',
+    'Feb',
+    'Mar',
+    'Abr',
+    'May',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dic'
+  ],
+  dayNames: [
+    'Domingo',
+    'Lunes',
+    'Martes',
+    'Miércoles',
+    'Jueves',
+    'Viernes',
+    'Sábado'
+  ],
+  dayNamesShort: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+};
+
+LocaleConfig.defaultLocale = 'es';
 
 interface CalendarioProps {
   onDiaSeleccionado?: (dia: DiaCalendario) => void;
@@ -27,20 +71,23 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('');
   const [diasCalendario, setDiasCalendario] = useState<DiaCalendario[]>([]);
   const [actividadesProximas2Semanas, setActividadesProximas2Semanas] = useState<DiaCalendario[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [examenesExpandidos, setExamenesExpandidos] = useState<Set<string>>(new Set());
 
   // Determinar qué usuario_id usar: si es padre, usar el del hijo activo
   const esPadre = user?.usuario?.rol === 'padre';
   const usuarioIdParaUsar = esPadre ? hijoActivo?.usuario_id : user?.usuario?.usuario_id;
 
-  // Obtener fechas del mes actual
+  // Obtener fechas: desde HOY hasta 1 año adelante
+  // Esto asegura que se muestren todas las sesiones próximas, incluso si están en el siguiente año
   const hoy = new Date();
-  const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-  const ultimoDiaMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+  hoy.setHours(0, 0, 0, 0); // Normalizar a inicio del día
+  const ultimoDiaRango = new Date(hoy.getFullYear() + 1, hoy.getMonth(), hoy.getDate()); // 1 año adelante
   
-  const fechaInicio = primerDiaMes.toISOString().split('T')[0];
-  const fechaFin = ultimoDiaMes.toISOString().split('T')[0];
+  const fechaInicio = hoy.toISOString().split('T')[0]; // Desde hoy
+  const fechaFin = ultimoDiaRango.toISOString().split('T')[0];
+  
+  // console.log('📅 Rango del calendario calculado:', { fechaInicio, fechaFin, hoy: hoy.toISOString() }); // Comentado para reducir logs
 
   const cargarDatosCalendario = async () => {
     // Si es padre y no tiene hijo activo, no cargar
@@ -52,8 +99,8 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
 
     if (!usuarioIdParaUsar) return;
 
-    console.log('🚀 Cargando datos del calendario para usuario:', usuarioIdParaUsar);
-    console.log('📅 Rango de fechas:', { fechaInicio, fechaFin });
+    // console.log('🚀 Cargando datos del calendario para usuario:', usuarioIdParaUsar); // Comentado para reducir logs
+    // console.log('📅 Rango de fechas:', { fechaInicio, fechaFin }); // Comentado para reducir logs
 
     setLoading(true);
     try {
@@ -81,9 +128,20 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
         getDiasCalendario(alumnoId, fechaInicioProximas2Semanas, fechaFinProximas2Semanas.toISOString().split('T')[0])
       ]);
 
-      console.log('📊 Días del calendario:', dias.length);
-      console.log('🗓️ Días con actividades:', dias);
-      console.log('📅 Actividades próximas 2 semanas:', actividades.length);
+      // console.log('📊 Días del calendario:', dias.length); // Comentado para reducir logs
+      // console.log('🗓️ Días con actividades:', dias); // Comentado para reducir logs
+      // console.log('📅 Actividades próximas 2 semanas:', actividades.length); // Comentado para reducir logs
+      
+      // Log detallado para debugging (solo en desarrollo si es necesario)
+      // dias.forEach(dia => {
+      //   if (dia.tieneActividades) {
+      //     console.log(`📅 Día con actividades: ${dia.fecha}`, {
+      //       sesiones: dia.sesiones.length,
+      //       examenes: dia.examenes.length,
+      //       temas: dia.sesiones.map(s => s.tema)
+      //     });
+      //   }
+      // });
 
       setDiasCalendario(dias);
       setActividadesProximas2Semanas(actividades);
@@ -104,7 +162,7 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
   // Refrescar cuando la pantalla recibe foco (cuando vuelves de otra pantalla)
   useFocusEffect(
     useCallback(() => {
-      console.log('🔄 Pantalla enfocada, refrescando calendario...');
+      // console.log('🔄 Pantalla enfocada, refrescando calendario...'); // Comentado para reducir logs
       cargarDatosCalendario();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [usuarioIdParaUsar, hijoActivo])
@@ -114,14 +172,14 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
   const crearMarkedDates = () => {
     const marked: any = {};
     
-    console.log('🔍 Creando marked dates con', diasCalendario.length, 'días');
+    // console.log('🔍 Creando marked dates con', diasCalendario.length, 'días'); // Comentado para reducir logs
     
     diasCalendario.forEach(dia => {
       const fecha = dia.fecha;
       const tieneSesiones = dia.sesiones.length > 0;
       const tieneExamenes = dia.examenes.length > 0;
       
-      console.log(`📅 Procesando fecha ${fecha}:`, { tieneSesiones, tieneExamenes });
+      // console.log(`📅 Procesando fecha ${fecha}:`, { tieneSesiones, tieneExamenes }); // Comentado para reducir logs
       
       // Usar marked directamente en lugar de dots
       if (tieneSesiones || tieneExamenes) {
@@ -129,12 +187,12 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
         
         if (tieneSesiones) {
           color = obtenerColorDot(dia.sesiones[0].estado);
-          console.log(`✅ Marcando sesión para ${fecha}:`, dia.sesiones[0].estado);
+          // console.log(`✅ Marcando sesión para ${fecha}:`, dia.sesiones[0].estado); // Comentado para reducir logs
         }
         
         if (tieneExamenes) {
           color = obtenerColorDot('', true);
-          console.log(`✅ Marcando examen para ${fecha}`);
+          // console.log(`✅ Marcando examen para ${fecha}`); // Comentado para reducir logs
         }
         
         marked[fecha] = {
@@ -144,11 +202,11 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
           selectedColor: '#8B5CF6'
         };
         
-        console.log(`🎯 Marcado ${fecha} con color ${color}`);
+        // console.log(`🎯 Marcado ${fecha} con color ${color}`); // Comentado para reducir logs
       }
     });
     
-    console.log('🗓️ Marked dates finales:', marked);
+    // console.log('🗓️ Marked dates finales:', marked); // Comentado para reducir logs
     return marked;
   };
 
@@ -166,7 +224,17 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
 
   const renderSesion = (sesion: SesionCalendario, fecha?: string) => {
     const turno = extraerTurno(sesion.observacion);
-    const fechaSesion = fecha || sesion.fecha.split('T')[0];
+    // Normalizar fecha a zona horaria local
+    let fechaSesion: string;
+    if (fecha) {
+      fechaSesion = fecha;
+    } else {
+      const fechaUTC = new Date(sesion.fecha);
+      const año = fechaUTC.getFullYear();
+      const mes = String(fechaUTC.getMonth() + 1).padStart(2, '0');
+      const dia = String(fechaUTC.getDate()).padStart(2, '0');
+      fechaSesion = `${año}-${mes}-${dia}`;
+    }
     const puedeIniciar = sesion.estado === 'NoCompletada' && !esPadre;
     
     // Si es padre, usar View en lugar de TouchableOpacity (solo visualización)
@@ -305,7 +373,7 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
             textDayHeaderFontSize: 13
           }}
           style={styles.calendar}
-          markingType="simple"
+          markingType={'simple' as any}
         />
       </View>
     );
@@ -339,7 +407,7 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
             {(() => {
               // Agrupar sesiones por examen_id
               const sesionesPorExamen = new Map<string, SesionCalendario[]>();
-              const examenesConFecha: Array<{ examen: ExamenCalendario; fecha: string }> = [];
+              const examenesConFecha: { examen: ExamenCalendario; fecha: string }[] = [];
               
               actividadesProximas2Semanas
                 .filter(dia => dia.tieneActividades)
@@ -407,7 +475,7 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
             textDayHeaderFontSize: 13
           }}
           style={styles.calendar}
-          markingType="simple"
+          markingType={'simple' as any}
         />
       </View>
 
@@ -437,7 +505,7 @@ export default function CalendarioComponent({ onDiaSeleccionado, refreshKey, sho
             {(() => {
               // Agrupar sesiones por examen_id
               const sesionesPorExamen = new Map<string, SesionCalendario[]>();
-              const examenesConFecha: Array<{ examen: ExamenCalendario; fecha: string }> = [];
+              const examenesConFecha: { examen: ExamenCalendario; fecha: string }[] = [];
               
               actividadesProximas2Semanas
                 .filter(dia => dia.tieneActividades)

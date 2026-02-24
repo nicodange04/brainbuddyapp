@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LoginScreen() {
@@ -40,9 +41,12 @@ export default function LoginScreen() {
         {/* Header */}
         <ThemedView style={styles.header}>
           <ThemedView style={styles.logoContainer}>
-            <ThemedView style={styles.logo}>
-              <ThemedText style={styles.logoText}>BB</ThemedText>
-            </ThemedView>
+            <Image
+              source={require('@/assets/images/logopng.png')}
+              style={styles.logoImage}
+              contentFit="contain"
+              transition={200}
+            />
           </ThemedView>
           <ThemedText type="title" style={styles.title}>
             ¡Bienvenido a Brain Buddy!
@@ -147,27 +151,12 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: 24,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#8B5CF6',
-    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8B5CF6',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    justifyContent: 'center',
   },
-  logoText: {
-    color: 'white',
-    fontSize: 32,
-    fontWeight: 'bold',
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   title: {
     textAlign: 'center',

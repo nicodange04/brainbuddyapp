@@ -375,13 +375,18 @@ export async function distribuirSesionesParaExamen(
 
     // 7. Iniciar generación de material en background (NO bloquea el flujo principal)
     // Obtener las sesiones creadas para generar material
-    const { data: sesionesData } = await supabase
+    console.log(`🔍 [DEBUG] Obteniendo sesiones creadas para examen ${examenId}...`);
+    const { data: sesionesData, error: errorSesiones } = await supabase
       .from('sesionestudio')
       .select('sesion_id, tema')
       .eq('examen_id', examenId);
 
+    console.log(`🔍 [DEBUG] Sesiones obtenidas:`, { sesionesData, errorSesiones, count: sesionesData?.length });
+
     if (sesionesData && sesionesData.length > 0) {
       console.log(`🚀 Iniciando generación de material en background para ${sesionesData.length} sesión(es)...`);
+      console.log(`🔍 [DEBUG] Sesiones a procesar:`, sesionesData.map(s => ({ sesion_id: s.sesion_id, tema: s.tema })));
+      console.log(`🔍 [DEBUG] Materia del examen:`, examen.materia);
       
       // Iniciar generación en background (no esperar)
       generarMaterialEnBackground(
@@ -390,8 +395,11 @@ export async function distribuirSesionesParaExamen(
         examenId
       ).catch((error) => {
         console.error('❌ Error al iniciar generación en background:', error);
+        console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
         // No afecta el flujo principal, solo logueamos el error
       });
+    } else {
+      console.warn(`⚠️ No se encontraron sesiones para el examen ${examenId}. Error:`, errorSesiones);
     }
 
     return {

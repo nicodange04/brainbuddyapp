@@ -29,7 +29,7 @@ export default function ConfiguracionScreen() {
             try {
               await logout();
               router.replace('/login');
-            } catch (error) {
+            } catch {
               Alert.alert('Error', 'No se pudo cerrar la sesión');
             }
           },

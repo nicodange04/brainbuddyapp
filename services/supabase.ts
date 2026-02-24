@@ -4,8 +4,16 @@ import * as SecureStore from 'expo-secure-store';
 import 'react-native-url-polyfill/auto';
 
 // Configuración de Supabase
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+// Validar que las variables estén definidas
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ ERROR: Variables de entorno de Supabase no configuradas');
+  console.error('   EXPO_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✅' : '❌');
+  console.error('   EXPO_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅' : '❌');
+  console.error('   Verifica que el archivo .env existe y tiene las variables correctas');
+}
 
 // Adaptador para almacenamiento seguro en React Native
 const ExpoSecureStoreAdapter = {
@@ -14,15 +22,24 @@ const ExpoSecureStoreAdapter = {
   removeItem: (key: string) => SecureStore.deleteItemAsync(key),
 };
 
-// Crear cliente Supabase
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: ExpoSecureStoreAdapter,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-});
+// Crear cliente Supabase (solo si las variables están definidas)
+export const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        storage: ExpoSecureStoreAdapter,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+    })
+  : createClient('https://placeholder.supabase.co', 'placeholder-key', {
+      auth: {
+        storage: ExpoSecureStoreAdapter,
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+    });
 
 // Tipos para la base de datos (basados en tu estructura actual)
 export interface Usuario {
@@ -32,6 +49,8 @@ export interface Usuario {
   correo: string;
   password_hash: string;
   rol: 'alumno' | 'padre' | 'admin';
+  codigo_vinculacion?: string;
+  fecha_nacimiento?: string;
   deleted_at?: string;
   created_at: string;
   updated_at: string;
@@ -47,6 +66,7 @@ export interface Alumno {
 
 export interface Padre {
   padre_id: string;
+  telefono?: string;
   created_at: string;
   updated_at: string;
 }

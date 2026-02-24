@@ -37,15 +37,14 @@ export default function TabLayout() {
           href: esPadre ? null : '/(tabs)', // Oculta el tab para padres
         }}
       />
-      {esPadre && (
-        <Tabs.Screen
-          name="progreso"
-          options={{
-            title: 'Progreso',
-            tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
-          }}
-        />
-      )}
+      <Tabs.Screen
+        name="progreso"
+        options={{
+          title: 'Progreso',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
+          href: esPadre ? '/(tabs)/progreso' : null, // Visible solo para padres, oculto para alumnos
+        }}
+      />
       <Tabs.Screen
         name="perfil"
         options={{
@@ -53,14 +52,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
-      {!esPadre && (
-        <Tabs.Screen
-          name="progreso"
-          options={{
-            href: null, // Oculta el tab pero mantiene la ruta accesible
-          }}
-        />
-      )}
     </Tabs>
   );
 }

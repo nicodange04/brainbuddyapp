@@ -46,3 +46,32 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Cursor configuration files (no subir al repositorio)
+.cursorrules
+.cursorignore
+
+# Documentación no esencial (se mantienen localmente)
+docs/ARQUITECTURA_FORMATOS_MULTIMEDIA.md
+docs/CONFIGURACION_NOTEBOOKLM_GEMINI.md
+docs/GUIA_API_KEY_GEMINI.md
+docs/GUIA_FORMATOS_ONBOARDING.md
+docs/GUIA_NOMBRE_MODELO_GEMINI.md
+docs/GUIA_PRUEBA_ONBOARDING.md
+docs/INTEGRACION_GEMINI.md
+docs/INTEGRACION_ONBOARDING.md
+docs/MCP_EXPLICACION.md
+docs/ONBOARDING_PERFIL_APRENDIZAJE.md
+docs/SUPABASE_MCP_GUIDE.md
+docs/TESTEAR_GEMINI.md
+docs/TRANSFORMACION_CONTENIDO_FUTURO.md
+docs/WARNINGS_EXPLICACION.md
+
+# Archivos de documentación temporal en raíz
+README_MCP.md
+DIAGNOSTICO_COMPLETO_TIMEOUT.md
+SOLUCION_FINAL_TIMEOUT.md
+SOLUCION_LOGIN_EXPO.md
+SOLUCION_NOMBRE_MODELO.md
+SOLUCION_TIMEOUT.md
+TEST_ONBOARDING.md

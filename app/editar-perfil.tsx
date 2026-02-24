@@ -65,7 +65,7 @@ export default function EditarPerfilScreen() {
   const [apellido, setApellido] = useState(user?.usuario?.apellido || '');
   const [correo, setCorreo] = useState(user?.usuario?.correo || '');
   const [fechaNacimiento, setFechaNacimiento] = useState(
-    user?.alumno?.fecha_nacimiento || ''
+    user?.usuario?.fecha_nacimiento || ''
   );
   const [telefono, setTelefono] = useState(
     user?.padre?.telefono || ''
@@ -148,8 +148,8 @@ export default function EditarPerfilScreen() {
 
   // Inicializar fecha de nacimiento formateada
   React.useEffect(() => {
-    if (user?.alumno?.fecha_nacimiento && !fechaNacimiento) {
-      setFechaNacimiento(formatearFechaDesdeISO(user.alumno.fecha_nacimiento));
+    if (user?.usuario?.fecha_nacimiento && !fechaNacimiento) {
+      setFechaNacimiento(formatearFechaDesdeISO(user.usuario.fecha_nacimiento));
     }
   }, [user]);
 
@@ -353,7 +353,7 @@ export default function EditarPerfilScreen() {
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Código de vinculación:</Text>
                 <Text style={styles.infoValue}>
-                  {user.alumno.codigo_vinculacion || 'N/A'}
+                  {user.usuario.codigo_vinculacion || 'N/A'}
                 </Text>
               </View>
             )}

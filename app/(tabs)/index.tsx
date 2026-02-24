@@ -3,7 +3,7 @@ import { SelectorHijo } from '@/components/SelectorHijo';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePadre } from '@/contexts/PadreContext';
 import { seleccionarColorPorNombre } from '@/services/avatar';
-import { getProximaSesion, getProximasSesiones, getProximosExamenes, getSesionesPendientes, ProximaSesion, ProximoExamen, SesionPendiente } from '@/services/home';
+import { getProximasSesiones, getProximosExamenes, getSesionesPendientes, ProximaSesion, ProximoExamen } from '@/services/home';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -17,7 +17,7 @@ export default function HomeScreen() {
   const { hijoActivo, loading: loadingPadre } = usePadre();
   const [proximasSesiones, setProximasSesiones] = useState<(ProximaSesion & { esPendiente?: boolean; diasAtraso?: number })[]>([]);
   const [proximosExamenes, setProximosExamenes] = useState<ProximoExamen[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   // Determinar si es padre o alumno
   const esPadre = user?.usuario?.rol === 'padre';
@@ -122,10 +122,13 @@ export default function HomeScreen() {
 
   // Formatear fecha
   const formatearFecha = (fecha: string) => {
+    // Parsear la fecha correctamente considerando zona horaria
     const date = new Date(fecha);
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-    const fechaObj = new Date(date);
+    
+    // Normalizar la fecha de la sesión a inicio del día en zona horaria local
+    const fechaObj = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     fechaObj.setHours(0, 0, 0, 0);
 
     if (fechaObj.getTime() === hoy.getTime()) {
@@ -138,7 +141,12 @@ export default function HomeScreen() {
       return 'Mañana';
     }
 
-    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    // Mostrar fecha completa: día de la semana, día y mes (ej: "Mar, 23 dic")
+    return date.toLocaleDateString('es-ES', { 
+      weekday: 'short',
+      day: 'numeric', 
+      month: 'short' 
+    });
   };
 
   // Calcular progreso de sesión (simulado por ahora)

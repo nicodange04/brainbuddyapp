@@ -8,6 +8,8 @@ export interface Usuario {
   correo: string;
   password_hash: string;
   rol: 'alumno' | 'padre' | 'admin';
+  codigo_vinculacion?: string;
+  fecha_nacimiento?: string;
   deleted_at?: string;
   created_at: string;
   updated_at: string;
@@ -23,6 +25,7 @@ export interface Alumno {
 
 export interface Padre {
   padre_id: string;
+  telefono?: string;
   created_at: string;
   updated_at: string;
 }

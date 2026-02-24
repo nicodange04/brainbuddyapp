@@ -90,7 +90,7 @@ export default function PerfilScreen() {
   };
 
   const copiarCodigo = async () => {
-    const codigo = user?.alumno?.codigo_vinculacion || '';
+    const codigo = user?.usuario?.codigo_vinculacion || '';
     if (!codigo) {
       Alert.alert('Error', 'No se pudo obtener el código de vinculación');
       return;
@@ -161,9 +161,9 @@ export default function PerfilScreen() {
             {rolUsuario === 'alumno' ? '👨‍🎓 Alumno' : '👨‍👩‍👧‍👦 Padre'}
           </Text>
         </View>
-        {user?.alumno?.fecha_nacimiento && (
+        {user?.usuario?.fecha_nacimiento && (
           <Text style={styles.fechaNacimiento}>
-            📅 {formatearFechaNacimiento(user.alumno.fecha_nacimiento)}
+            📅 {formatearFechaNacimiento(user.usuario.fecha_nacimiento)}
           </Text>
         )}
         {!user?.padre && (
@@ -421,7 +421,7 @@ export default function PerfilScreen() {
           <Text style={styles.sectionTitle}>🔗 CÓDIGO DE VINCULACIÓN</Text>
           <View style={styles.codigoCard}>
             <Text style={styles.codigoTexto}>
-              {user?.alumno?.codigo_vinculacion || 'N/A'}
+              {user?.usuario?.codigo_vinculacion || 'N/A'}
             </Text>
             <Text style={styles.codigoDescripcion}>
               Comparte este código con tus padres para que puedan ver tu progreso
@@ -498,7 +498,7 @@ export default function PerfilScreen() {
                       try {
                         await logout();
                         router.replace('/login');
-                      } catch (error) {
+                      } catch {
                         Alert.alert('Error', 'No se pudo cerrar la sesión');
                       }
                     },

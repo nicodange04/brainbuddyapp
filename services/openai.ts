@@ -37,7 +37,8 @@ export interface QuizCompleto {
 export async function generarContenidoTeorico(
   tema: string,
   materia: string,
-  textoAdicional?: string
+  textoAdicional?: string,
+  promptPersonalizado?: string
 ): Promise<ContenidoTeorico> {
   try {
     const prompt = `
@@ -45,12 +46,19 @@ Genera contenido teórico para estudiantes de secundaria sobre el tema: "${tema}
 
 ${textoAdicional ? `Información adicional del estudiante: ${textoAdicional}` : ''}
 
-Requisitos:
-- Nivel: Secundaria (13-18 años)
-- Lenguaje: Claro y didáctico
-- Estructura: 5-6 secciones
-- Cada sección debe tener: título, contenido (2-3 párrafos), y un tip destacado
+${promptPersonalizado ? `\nPERSONALIZACIÓN SEGÚN PERFIL DE APRENDIZAJE DEL ALUMNO:\n${promptPersonalizado}\n` : ''}
+
+REQUISITOS CRÍTICOS:
+- Nivel: Secundaria (13-18 años) - contenido apropiado para este nivel educativo
+- Lenguaje: Claro, simple y didáctico. EVITA términos técnicos avanzados, jerga especializada o conceptos universitarios
+- Profundidad: Explica los conceptos con la profundidad que se espera en secundaria, no más avanzado
+- Vocabulario: Usa palabras que un estudiante de secundaria pueda entender fácilmente
+- Explicaciones: Si necesitas mencionar conceptos complejos, explícalos de forma simple y con ejemplos cotidianos
+- Estructura: 5-6 secciones bien organizadas
+- Cada sección debe tener: título claro, contenido (2-3 párrafos explicativos), y un tip práctico destacado
 - Formato: JSON válido
+
+IMPORTANTE: El contenido debe ser educativo pero accesible. No uses terminología técnica avanzada a menos que sea absolutamente necesario, y en ese caso, explícala de forma simple.
 
 Responde ÚNICAMENTE con el JSON en este formato:
 {
@@ -115,7 +123,11 @@ REQUISITOS ESTRICTOS:
 1. CANTIDAD: Exactamente 10 preguntas (ni más ni menos)
 2. OPCIONES: Cada pregunta debe tener EXACTAMENTE 4 opciones
 3. DISTRIBUCIÓN DE DIFICULTAD: 3 preguntas fáciles, 4 medias, 3 difíciles
-4. NIVEL: Secundaria (13-18 años)
+4. NIVEL: Secundaria (13-18 años) - Las preguntas deben ser apropiadas para este nivel educativo
+   - EVITA términos técnicos avanzados, jerga especializada o conceptos universitarios
+   - Usa vocabulario que un estudiante de secundaria pueda entender
+   - La dificultad debe ser apropiada para secundaria, no más avanzada
+   - Si necesitas mencionar conceptos complejos, usa lenguaje simple y claro
 
 5. DIFICULTAD Y CALIDAD DE RESPUESTAS (CRÍTICO):
    - Las preguntas deben requerir conocimiento ESPECÍFICO del material estudiado para responder correctamente

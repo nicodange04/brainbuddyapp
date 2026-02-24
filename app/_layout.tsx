@@ -23,6 +23,7 @@ export default function RootLayout() {
           <Stack>
             <Stack.Screen name="login" options={{ headerShown: false }} />
             <Stack.Screen name="register" options={{ headerShown: false }} />
+            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="disponibilidad" options={{ headerShown: false }} />
             <Stack.Screen name="crear-examen" options={{ headerShown: false }} />
             <Stack.Screen name="sesion-estudio" options={{ headerShown: false }} />

@@ -76,8 +76,8 @@ export async function getSesionesCalendario(
         )
       `)
       .in('examen_id', examenIds)
-      .gte('fecha', `${fechaInicio}T00:00:00`)
-      .lte('fecha', `${fechaFin}T23:59:59`)
+      .gte('fecha', `${fechaInicio}T00:00:00.000Z`)
+      .lte('fecha', `${fechaFin}T23:59:59.999Z`)
       .order('fecha', { ascending: true });
 
     if (error) {
@@ -89,23 +89,35 @@ export async function getSesionesCalendario(
     console.log('📋 Datos de sesiones:', data);
     console.log('🔍 Filtros aplicados:', { 
       examenIds, 
-      fechaInicio: `${fechaInicio}T00:00:00`, 
-      fechaFin: `${fechaFin}T23:59:59` 
+      fechaInicio: `${fechaInicio}T00:00:00.000Z`, 
+      fechaFin: `${fechaFin}T23:59:59.999Z` 
     });
+    
+    // Log detallado de cada sesión para debugging
+    if (data && data.length > 0) {
+      data.forEach((sesion, index) => {
+        const fechaSesion = sesion.fecha.split('T')[0];
+        console.log(`📅 Sesión ${index + 1}: fecha=${sesion.fecha}, fechaSesion=${fechaSesion}, tema=${sesion.tema}`);
+      });
+    }
 
     // Transformar los datos para incluir información del examen
-    const sesionesTransformadas: SesionCalendario[] = (data || []).map(sesion => ({
-      sesion_id: sesion.sesion_id,
-      examen_id: sesion.examen_id,
-      nombre: sesion.nombre,
-      tema: sesion.tema,
-      fecha: sesion.fecha,
-      estado: sesion.estado,
-      observacion: sesion.observacion,
-      examen_nombre: sesion.examen?.nombre,
-      examen_materia: sesion.examen?.materia,
-      examen_fecha: sesion.examen?.fecha
-    }));
+    const sesionesTransformadas: SesionCalendario[] = (data || []).map(sesion => {
+      // El examen puede venir como objeto o array dependiendo de la relación
+      const examen = Array.isArray(sesion.examen) ? sesion.examen[0] : sesion.examen;
+      return {
+        sesion_id: sesion.sesion_id,
+        examen_id: sesion.examen_id,
+        nombre: sesion.nombre,
+        tema: sesion.tema,
+        fecha: sesion.fecha,
+        estado: sesion.estado,
+        observacion: sesion.observacion,
+        examen_nombre: examen?.nombre,
+        examen_materia: examen?.materia,
+        examen_fecha: examen?.fecha
+      };
+    });
 
     return sesionesTransformadas;
   } catch (error) {
@@ -158,7 +170,17 @@ export async function getDiasCalendario(
 
     // Agregar sesiones por día
     sesiones.forEach(sesion => {
-      const fechaSesion = sesion.fecha.split('T')[0]; // Extraer solo la fecha
+      // Parsear la fecha y normalizarla a la fecha local (no UTC)
+      // Esto asegura que si la fecha es 2025-12-23 09:00:00+00, se muestre como 23 de diciembre
+      // independientemente de la zona horaria
+      const fechaUTC = new Date(sesion.fecha);
+      // Obtener la fecha en la zona horaria local
+      const año = fechaUTC.getFullYear();
+      const mes = String(fechaUTC.getMonth() + 1).padStart(2, '0');
+      const dia = String(fechaUTC.getDate()).padStart(2, '0');
+      const fechaSesion = `${año}-${mes}-${dia}`;
+      
+      console.log(`📅 Procesando sesión: fecha original=${sesion.fecha}, fecha normalizada=${fechaSesion}`);
       
       if (!diasMap.has(fechaSesion)) {
         diasMap.set(fechaSesion, {

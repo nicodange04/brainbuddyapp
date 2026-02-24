@@ -21,17 +21,27 @@ export default function CrearExamenScreen() {
     material: '',
   });
 
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{
+  const [uploadedFiles, setUploadedFiles] = useState<{
     fileName: string;
     fileSize: number;
     mimeType: string;
-  }>>([]);
+  }[]>([]);
 
   const [currentExamenId, setCurrentExamenId] = useState<string | null>(null);
 
   const convertToISODate = (dateString: string): string => {
     // Convierte DD/MM/YYYY a YYYY-MM-DD
     const [day, month, year] = dateString.split('/');
+    const dayNum = parseInt(day, 10);
+    const monthNum = parseInt(month, 10);
+    const yearNum = parseInt(year, 10);
+    
+    // Validar que la fecha sea válida (ej: no 29/02/2026 porque 2026 no es bisiesto)
+    const fechaObj = new Date(yearNum, monthNum - 1, dayNum);
+    if (fechaObj.getDate() !== dayNum || fechaObj.getMonth() !== monthNum - 1 || fechaObj.getFullYear() !== yearNum) {
+      throw new Error('Fecha inválida');
+    }
+    
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   };
 
@@ -54,7 +64,7 @@ export default function CrearExamenScreen() {
           if (fechaExamen < hoy) {
             return false; // Fecha pasada
           }
-        } catch (error) {
+        } catch {
           return false; // Fecha inválida
         }
         
@@ -87,7 +97,7 @@ export default function CrearExamenScreen() {
             Alert.alert('Error', 'La fecha del examen debe ser futura o igual a hoy');
             return;
           }
-        } catch (error) {
+        } catch {
           Alert.alert('Error', 'Formato de fecha inválido. Use DD/MM/YYYY');
           return;
         }
@@ -109,11 +119,20 @@ export default function CrearExamenScreen() {
       let examenId = currentExamenId;
       
       if (!examenId) {
+        // Validar fecha antes de crear examen temporal
+        let fechaISO: string;
+        try {
+          fechaISO = convertToISODate(formData.fecha);
+        } catch (error) {
+          Alert.alert('Error', 'Fecha inválida. Por favor, verifica que la fecha sea correcta (ej: 29/02 solo en años bisiestos)');
+          setIsLoading(false);
+          return;
+        }
+        
         // Crear examen temporal para poder subir archivos
-        const fechaISO = convertToISODate(formData.fecha);
         
         const examenData = {
-          alumno_id: user?.usuario?.usuario_id,
+          alumno_id: user?.usuario?.usuario_id, // La tabla examen usa alumno_id, no usuario_id
           nombre: formData.nombre.trim() || 'Examen Temporal',
           materia: formData.materia.trim() || 'Materia Temporal',
           fecha: fechaISO,
@@ -135,6 +154,11 @@ export default function CrearExamenScreen() {
 
         examenId = data.examen_id;
         setCurrentExamenId(examenId);
+      }
+      
+      if (!examenId) {
+        Alert.alert('Error', 'No se pudo obtener el ID del examen');
+        return;
       }
       
       const result = await uploadCompleteFile(examenId);
@@ -167,9 +191,18 @@ export default function CrearExamenScreen() {
 
     setIsLoading(true);
     try {
+      // Validar fecha antes de continuar
+      let fechaISO: string;
+      try {
+        fechaISO = convertToISODate(formData.fecha);
+      } catch (error) {
+        Alert.alert('Error', 'Fecha inválida. Por favor, verifica que la fecha sea correcta (ej: 29/02 solo en años bisiestos)');
+        setIsLoading(false);
+        return;
+      }
+
       // Si ya existe un examen (por archivos subidos), actualizarlo
       if (currentExamenId) {
-        const fechaISO = convertToISODate(formData.fecha);
         
         const { error } = await supabase
           .from('examen')
@@ -193,10 +226,8 @@ export default function CrearExamenScreen() {
         ]);
       } else {
         // Crear nuevo examen si no existe
-        const fechaISO = convertToISODate(formData.fecha);
-        
         const examenData = {
-          alumno_id: user.usuario.usuario_id,
+          alumno_id: user.usuario.usuario_id, // La tabla examen usa alumno_id, no usuario_id
           nombre: formData.nombre.trim(),
           materia: formData.materia.trim(),
           fecha: fechaISO,

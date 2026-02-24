@@ -1,10 +1,10 @@
 import { Avatar } from '@/components/avatar';
-import { CodigoVinculacion } from '@/components/codigo-vinculacion';
 import { DateInput } from '@/components/date-input';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/contexts/AuthContext';
-import { generarAvatar, generarCodigoVinculacion } from '@/services/avatar';
+import { formatearCodigoVinculacion, generarAvatar, generarCodigoVinculacion } from '@/services/avatar';
+import * as Clipboard from 'expo-clipboard';
 import { Link, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
@@ -264,55 +264,62 @@ export default function RegisterScreen() {
   const renderStep5 = () => (
     <ThemedView style={styles.stepContent}>
       <ThemedView style={styles.successContainer}>
-        <ThemedText style={styles.successEmoji}>🎉</ThemedText>
-        <ThemedText type="title" style={styles.stepTitle}>
-          ¡Cuenta creada exitosamente!
-        </ThemedText>
-        
-        {userType === 'alumno' ? (
-          <>
-            <ThemedText style={styles.stepSubtitle}>
-              Tu avatar y código de vinculación han sido generados
-            </ThemedText>
+        {/* Título breve */}
+        <ThemedText type="title" style={styles.successTitle}>
+          ¡Cuenta creada exitosamente! 🎉
+          </ThemedText>
 
-            {avatarGenerado && (
-              <ThemedView style={styles.avatarContainer}>
-                <Avatar 
-                  iniciales={avatarGenerado.iniciales}
-                  color={avatarGenerado.color as any}
-                  size="large"
-                />
-                <ThemedText style={styles.avatarLabel}>
-                  Tu avatar: {avatarGenerado.iniciales}
-                </ThemedText>
-              </ThemedView>
-            )}
-
-            {codigoGenerado && (
-              <CodigoVinculacion 
-                codigo={codigoGenerado}
-                titulo="Tu código de vinculación"
-                descripcion="Comparte este código con tus padres para que puedan seguir tu progreso de estudio"
-              />
-            )}
-          </>
-        ) : (
-          <>
-            <ThemedText style={styles.stepSubtitle}>
-              Tu cuenta de padre/madre ha sido creada
+        {/* Código grande y destacado (solo para alumnos) */}
+        {userType === 'alumno' && codigoGenerado && (
+          <ThemedView style={styles.codeHighlightContainer}>
+            <ThemedText style={styles.codeLabel}>Tu código de vinculación</ThemedText>
+            <TouchableOpacity 
+              style={styles.codeBoxLarge}
+              onPress={async () => {
+                try {
+                  await Clipboard.setStringAsync(codigoGenerado);
+                  Alert.alert('¡Copiado!', 'El código se ha copiado al portapapeles');
+                } catch {
+                  Alert.alert('Error', 'No se pudo copiar el código');
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <ThemedText style={styles.codeTextLarge}>
+                {formatearCodigoVinculacion(codigoGenerado)}
             </ThemedText>
-            <ThemedView style={styles.padreInfo}>
-              <ThemedText style={styles.padreText}>
-                • Usa el código de vinculación de tu hijo/a para conectarte
+              <ThemedText style={styles.codeHint}>Toca para copiar</ThemedText>
+            </TouchableOpacity>
+            <ThemedText style={styles.codeDescription}>
+              Compártelo con tus padres para que puedan seguir tu progreso
+            </ThemedText>
+          </ThemedView>
+          )}
+
+        {/* Avatar pequeño abajo (solo para alumnos) */}
+        {userType === 'alumno' && avatarGenerado && (
+          <ThemedView style={styles.avatarGroupCompact}>
+            <Avatar 
+              iniciales={avatarGenerado.iniciales}
+              color={avatarGenerado.color as any}
+              size="medium"
+            />
+            <ThemedText style={styles.avatarLabelCompact}>
+              Tu avatar
+            </ThemedText>
+          </ThemedView>
+        )}
+
+        {/* Info para padres */}
+        {userType === 'padre' && (
+          <ThemedView style={styles.padreInfoCompact}>
+            <ThemedText style={styles.padreInfoTitle}>
+              ¿Qué sigue?
               </ThemedText>
-              <ThemedText style={styles.padreText}>
-                • Podrás ver su progreso, sesiones y estadísticas
+            <ThemedText style={styles.padreInfoText}>
+              Usa el código de vinculación de tu hijo/a para conectarte y ver su progreso
               </ThemedText>
-              <ThemedText style={styles.padreText}>
-                • No podrás crear exámenes ni estudiar sesiones
-              </ThemedText>
-            </ThemedView>
-          </>
+          </ThemedView>
         )}
       </ThemedView>
     </ThemedView>
@@ -380,16 +387,24 @@ export default function RegisterScreen() {
           <ThemedView style={styles.finalNavigation}>
             <TouchableOpacity 
               style={styles.finalButton}
-              onPress={() => router.replace('/(tabs)')}
+              onPress={() => {
+                // Si es alumno, ir a onboarding; si es padre, ir a tabs
+                if (userType === 'alumno') {
+                  router.replace('/onboarding');
+                } else {
+                  router.replace('/(tabs)');
+                }
+              }}
             >
               <ThemedText style={styles.finalButtonText}>
-                {userType === 'alumno' ? '¡Comenzar a estudiar!' : 'Ir a la app'}
+                {userType === 'alumno' ? 'Continuar' : 'Ir a la app'}
               </ThemedText>
             </TouchableOpacity>
           </ThemedView>
         )}
 
-        {/* Footer */}
+        {/* Footer - Solo mostrar si no es el paso 5 */}
+        {step !== 5 && (
         <ThemedView style={styles.footer}>
           <ThemedText style={styles.footerText}>
             ¿Ya tienes cuenta?{' '}
@@ -402,6 +417,7 @@ export default function RegisterScreen() {
             </TouchableOpacity>
           </Link>
         </ThemedView>
+        )}
       </ThemedView>
     </ScrollView>
   );
@@ -459,18 +475,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   stepContent: {
-    gap: 16,
+    padding: 24,
   },
   stepTitle: {
     textAlign: 'center',
     color: '#1F2937',
-    marginBottom: 8,
+    marginBottom: 0, // Se maneja con gap del grupo
   },
   stepSubtitle: {
     textAlign: 'center',
     color: '#6B7280',
     fontSize: 16,
-    marginBottom: 20,
+    marginBottom: 0, // Se maneja con gap del grupo
   },
   userTypeCard: {
     backgroundColor: '#F9FAFB',
@@ -619,56 +635,130 @@ const styles = StyleSheet.create({
   },
   successContainer: {
     alignItems: 'center',
-    gap: 20,
+    gap: 32, // Espaciado generoso entre elementos principales
+    width: '100%',
   },
-  successEmoji: {
-    fontSize: 60,
-    marginBottom: 16,
+  successTitle: {
+    textAlign: 'center',
+    color: '#1F2937',
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
   },
-  avatarContainer: {
+  codeHighlightContainer: {
+    width: '100%',
     alignItems: 'center',
-    marginBottom: 20,
+    gap: 16,
   },
-  avatarLabel: {
-    fontSize: 16,
+  codeLabel: {
+    fontSize: 14,
     color: '#6B7280',
-    marginTop: 12,
-    fontWeight: '500',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  finalNavigation: {
-    marginTop: 24,
-  },
-  finalButton: {
-    backgroundColor: '#8B5CF6',
-    padding: 16,
-    borderRadius: 12,
+  codeBoxLarge: {
+    backgroundColor: '#F3E8FF',
+    paddingVertical: 32, // Aumentado de 24 a 32 para más espacio vertical
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: '#8B5CF6',
+    width: '100%',
     alignItems: 'center',
+    justifyContent: 'center', // Centrar verticalmente
+    minHeight: 100, // Altura mínima para acomodar el texto completo
     shadowColor: '#8B5CF6',
     shadowOffset: {
       width: 0,
       height: 4,
     },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
+    overflow: 'visible', // Asegurar que no se corte el texto
+  },
+  codeTextLarge: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#8B5CF6',
+    textAlign: 'center',
+    letterSpacing: 4,
+    lineHeight: 50, // 1.39x el fontSize (36 * 1.39 = 50) para espacio vertical suficiente con ascendentes/descendentes
+    marginBottom: 8,
+    includeFontPadding: false, // Eliminar padding extra en Android
+    textAlignVertical: 'center', // Centrar verticalmente en Android
+  },
+  codeHint: {
+    fontSize: 12,
+    color: '#A78BFA',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  codeDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: '90%',
+  },
+  avatarGroupCompact: {
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  avatarLabelCompact: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  finalNavigation: {
+    marginTop: 8,
+    width: '100%',
+  },
+  finalButton: {
+    backgroundColor: '#8B5CF6',
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    shadowColor: '#8B5CF6',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowRadius: 12,
+    elevation: 6,
+    width: '100%',
   },
   finalButtonText: {
     color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  padreInfo: {
-    backgroundColor: '#F3E8FF',
-    padding: 16,
-    borderRadius: 12,
+  padreInfoCompact: {
+    backgroundColor: '#F9FAFB',
+    padding: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#8B5CF6',
-    marginTop: 20,
+    borderColor: '#E5E7EB',
+    width: '100%',
+    alignItems: 'center',
+    gap: 8,
   },
-  padreText: {
+  padreInfoTitle: {
+    fontSize: 18,
+    color: '#1F2937',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  padreInfoText: {
     fontSize: 14,
     color: '#6B7280',
-    marginBottom: 8,
+    textAlign: 'center',
     lineHeight: 20,
   },
 });

@@ -50,7 +50,10 @@ export async function getProximasSesiones(alumnoId: string, limite: number = 3):
     }
 
     // Obtener las próximas sesiones (las más cercanas en el futuro)
-    const ahora = new Date().toISOString();
+    // Normalizar a inicio del día para consistencia con el calendario
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const ahora = hoy.toISOString();
 
     const { data, error } = await supabase
       .from('sesionestudio')
@@ -115,7 +118,10 @@ export async function getProximaSesion(alumnoId: string): Promise<ProximaSesion 
     }
 
     // Obtener la próxima sesión (la más cercana en el futuro)
-    const ahora = new Date().toISOString();
+    // Normalizar a inicio del día para consistencia con el calendario
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const ahora = hoy.toISOString();
 
     const { data, error } = await supabase
       .from('sesionestudio')
