@@ -90,7 +90,8 @@ export default function PerfilScreen() {
   };
 
   const copiarCodigo = async () => {
-    const codigo = user?.usuario?.codigo_vinculacion || '';
+    // El código puede estar en usuario.codigo_vinculacion o en alumno.codigo_vinculacion
+    const codigo = user?.usuario?.codigo_vinculacion || user?.alumno?.codigo_vinculacion || '';
     if (!codigo) {
       Alert.alert('Error', 'No se pudo obtener el código de vinculación');
       return;
@@ -421,7 +422,7 @@ export default function PerfilScreen() {
           <Text style={styles.sectionTitle}>🔗 CÓDIGO DE VINCULACIÓN</Text>
           <View style={styles.codigoCard}>
             <Text style={styles.codigoTexto}>
-              {user?.usuario?.codigo_vinculacion || 'N/A'}
+              {user?.usuario?.codigo_vinculacion || user?.alumno?.codigo_vinculacion || 'N/A'}
             </Text>
             <Text style={styles.codigoDescripcion}>
               Comparte este código con tus padres para que puedan ver tu progreso

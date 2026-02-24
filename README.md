@@ -2,6 +2,8 @@
 
 App móvil gamificada que ayuda a estudiantes de secundaria a estudiar para exámenes mediante inteligencia artificial.
 
+> **📖 Instalación:** Ver [`INSTALACION.md`](./INSTALACION.md)
+
 ## 📋 Requisitos Previos
 
 Antes de comenzar, asegúrate de tener instalado:

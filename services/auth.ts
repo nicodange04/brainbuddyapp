@@ -103,7 +103,17 @@ export const register = async (data: RegisterData): Promise<AuthUser> => {
       throw new Error('No se pudo crear el usuario');
     }
 
-    // Crear registro en tabla usuarios
+    let codigoVinculacion: string | undefined;
+    let avatar: { iniciales: string; color: string } | undefined;
+
+    // Si es alumno, generar código y avatar antes de crear el usuario
+    if (data.rol === 'alumno') {
+      avatar = generarAvatar(`${data.nombre} ${data.apellido}`);
+      codigoVinculacion = generarCodigoVinculacion();
+    }
+
+    // Crear registro en tabla usuarios (solo columnas que existen en la tabla)
+    // Según la BD real, usuarios solo tiene: usuario_id, nombre, apellido, correo, password_hash, rol, deleted_at, created_at, updated_at
     const { data: usuario, error: usuarioError } = await supabase
       .from('usuarios')
       .insert({
@@ -126,11 +136,7 @@ export const register = async (data: RegisterData): Promise<AuthUser> => {
     let padre: Padre | undefined;
 
     // Crear registro específico según el rol
-    if (data.rol === 'alumno') {
-      // Generar avatar y código de vinculación
-      const avatar = generarAvatar(`${data.nombre} ${data.apellido}`);
-      const codigoVinculacion = generarCodigoVinculacion();
-
+    if (data.rol === 'alumno' && codigoVinculacion && avatar) {
       const { data: alumnoData, error: alumnoError } = await supabase
         .from('alumno')
         .insert({
@@ -150,6 +156,18 @@ export const register = async (data: RegisterData): Promise<AuthUser> => {
       }
 
       alumno = alumnoData;
+
+      // Intentar actualizar usuarios con el código de vinculación si la columna existe
+      // Si no existe, no pasa nada (el código está en alumno)
+      try {
+        await supabase
+          .from('usuarios')
+          .update({ codigo_vinculacion: codigoVinculacion })
+          .eq('usuario_id', authData.user.id);
+      } catch (error) {
+        // Si la columna no existe, ignorar el error silenciosamente
+        // El código ya está guardado en la tabla alumno
+      }
     } else if (data.rol === 'padre') {
       const { data: padreData, error: padreError } = await supabase
         .from('padre')
@@ -213,6 +231,14 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
 
     if (usuarioError) {
       return null;
+    }
+
+    // Si el usuario es alumno, tomar el código de vinculación de la tabla alumno
+    // porque la columna codigo_vinculacion no existe en usuarios
+    if (usuario.rol === 'alumno' && usuario.alumno?.codigo_vinculacion) {
+      // Asignar el código de vinculación del alumno al objeto usuario
+      // para que esté disponible en user.usuario.codigo_vinculacion
+      usuario.codigo_vinculacion = usuario.alumno.codigo_vinculacion;
     }
 
     return {

@@ -19,7 +19,8 @@
     "verificar-api-key": "ts-node scripts/verificar-api-key-gemini.ts",
     "diagnosticar-formatos": "ts-node scripts/diagnosticar-formatos.ts",
     "verificar-estructura-examen": "ts-node scripts/verificar-estructura-examen.ts",
-    "verificar-instalacion": "ts-node scripts/verificar-instalacion.ts"
+    "verificar-instalacion": "ts-node scripts/verificar-instalacion.ts",
+    "limpiar-datos": "ts-node scripts/limpiar-datos.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

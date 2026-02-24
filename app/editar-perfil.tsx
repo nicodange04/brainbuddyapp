@@ -353,7 +353,7 @@ export default function EditarPerfilScreen() {
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Código de vinculación:</Text>
                 <Text style={styles.infoValue}>
-                  {user.usuario.codigo_vinculacion || 'N/A'}
+                  {user.usuario.codigo_vinculacion || user.alumno?.codigo_vinculacion || 'N/A'}
                 </Text>
               </View>
             )}
